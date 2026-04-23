@@ -13,7 +13,7 @@ export const register = async (req: Request, res: Response) => {
 export const login = async (req: Request, res: Response) => {
     try {
         const result = await loginUser(req.body);
-        res.status(200).json({ success: true, ...result });
+        res.status(200).json({ success: true, user: result.user, token: result.token });
     } catch (error: any) {
         res.status(400).json({ success: false, message: error.message });
     }
