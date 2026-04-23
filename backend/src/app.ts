@@ -11,6 +11,7 @@ const app = express();
 
 app.get("/api/protected", authMiddleware, (req: any, res) => {
     res.json({
+        success: true,
         message: "You are authorized",
         user: req.user,
     });
@@ -30,7 +31,7 @@ app.get(
     authMiddleware,
     requireRole("EMPLOYER"),
     (req: any, res) => {
-        res.json({ message: "Employer access granted" });
+        res.json({ success: true, message: "Employer access granted" });
     }
 );
 

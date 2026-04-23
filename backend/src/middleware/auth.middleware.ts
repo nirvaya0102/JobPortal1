@@ -6,7 +6,7 @@ export const authMiddleware = (req: any, res: Response, next: NextFunction) => {
         const authHeader = req.headers.authorization;
 
         if (!authHeader) {
-            return res.status(401).json({ message: "No token provided" });
+            return res.status(401).json({ success: false, message: "No token provided" });
         }
 
         const token = authHeader.split(" ")[1];
@@ -17,6 +17,6 @@ export const authMiddleware = (req: any, res: Response, next: NextFunction) => {
 
         next();
     } catch (error) {
-        return res.status(401).json({ message: "Unauthorized" });
+        return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 };

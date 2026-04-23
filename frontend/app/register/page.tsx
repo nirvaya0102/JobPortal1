@@ -32,8 +32,6 @@ export default function RegisterPage() {
             setLoading(true);
             setMessage("");
 
-            console.log("Submitting form:", form);
-
             const res = await fetch("http://localhost:5000/api/auth/register", {
                 method: "POST",
                 headers: {
@@ -44,8 +42,6 @@ export default function RegisterPage() {
 
             const data = await res.json();
 
-            console.log("Register response:", data);
-
             if (data.success) {
                 setMessage("Registration successful. Please log in.");
                 router.push("/login");
@@ -53,7 +49,6 @@ export default function RegisterPage() {
                 setMessage(data.message || "Registration failed.");
             }
         } catch (error) {
-            console.error("Register error:", error);
             setMessage("Something went wrong.");
         } finally {
             setLoading(false);

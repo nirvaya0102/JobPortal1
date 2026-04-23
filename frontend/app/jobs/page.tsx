@@ -49,8 +49,6 @@ export default function JobsPage() {
             const url = `http://localhost:5000/api/jobs${params.toString() ? `?${params.toString()}` : ""
                 }`;
 
-            console.log("Fetching jobs from:", url);
-
             const res = await fetch(url, {
                 cache: "no-store",
             });
