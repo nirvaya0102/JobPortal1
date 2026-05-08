@@ -61,3 +61,4 @@ export const resendVerificationSchema = z.object({
     .toLowerCase()
     .email("Invalid email address"),
 });
+

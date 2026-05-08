@@ -27,7 +27,7 @@ export const registerUser = async (data: any) => {
     companyWebsite,
   } = data;
 
- if (![USER_ROLES.CANDIDATE, USER_ROLES.EMPLOYER].includes(role)) {
+  if (![USER_ROLES.CANDIDATE, USER_ROLES.EMPLOYER].includes(role)) {
     throw new AppError("Invalid role", 400);
   }
 
@@ -43,7 +43,7 @@ export const registerUser = async (data: any) => {
 
   const emailVerificationToken = createSecureToken();
   const emailVerificationExpires = new Date(
-   Date.now() + TOKEN_EXPIRY.EMAIL_VERIFICATION_MS
+    Date.now() + TOKEN_EXPIRY.EMAIL_VERIFICATION_MS
   );
 
   let user;
@@ -109,12 +109,14 @@ export const loginUser = async (data: any) => {
   });
 
   if (!user) {
+    console.log(`Login failed: User not found for email: ${email}`);
     throw new AppError("Invalid credentials", 401);
   }
 
   const isPasswordValid = await bcrypt.compare(password, user.password);
 
   if (!isPasswordValid) {
+    console.log(`Login failed: Invalid password for email: ${email}`);
     throw new AppError("Invalid credentials", 401);
   }
 
@@ -158,8 +160,8 @@ export const forgotPasswordService = async (email: string) => {
 
   const passwordResetToken = createSecureToken();
   const passwordResetExpires = new Date(
-  Date.now() + TOKEN_EXPIRY.PASSWORD_RESET_MS
-);
+    Date.now() + TOKEN_EXPIRY.PASSWORD_RESET_MS
+  );
 
   await prisma.user.update({
     where: { email },
@@ -277,7 +279,7 @@ export const resendVerificationEmailService = async (email: string) => {
 
   const emailVerificationToken = createSecureToken();
   const emailVerificationExpires = new Date(
-   Date.now() + TOKEN_EXPIRY.EMAIL_VERIFICATION_MS
+    Date.now() + TOKEN_EXPIRY.EMAIL_VERIFICATION_MS
   );
 
   await prisma.user.update({

@@ -10,7 +10,7 @@ dotenv.config();
 app.use(cookieParser());
 const PORT = process.env.PORT || 5000;
 
-app.use("/api/auth", authRoutes);
+// authRoutes is already mounted in app.ts
 app.use(errorMiddleware);
 
 app.listen(PORT, () => {
