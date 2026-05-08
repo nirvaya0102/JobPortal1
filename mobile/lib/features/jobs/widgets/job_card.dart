@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/job_model.dart';
+import '../screens/job_detail_screen.dart';
 
 class JobCard extends StatelessWidget {
   final JobModel job;
@@ -11,6 +12,21 @@ class JobCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    
+    return InkWell(
+    onTap: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => JobDetailScreen(
+            jobId: job.id,
+          ),
+        ),
+      );
+    },
+
+    
+
     return Card(
       margin: const EdgeInsets.only(bottom: 14),
       shape: RoundedRectangleBorder(
@@ -75,6 +91,7 @@ class JobCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }
