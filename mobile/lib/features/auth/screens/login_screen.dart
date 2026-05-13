@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../jobs/screens/jobs_screen.dart';
 import '../services/auth_service.dart';
 import 'register_screen.dart';
+import '../../employer/screens/employer_dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -21,45 +22,40 @@ class _LoginScreenState extends State<LoginScreen> {
   String? errorMessage;
 
   Future<void> handleLogin() async {
-  if (emailController.text.trim().isEmpty ||
-      passwordController.text.trim().isEmpty) {
-    setState(() {
-      errorMessage = 'Email and password are required.';
-    });
-    return;
+  final loginData = await authService.login(
+    email: emailController.text.trim(),
+    password: passwordController.text.trim(),
+  );
+
+  if (!mounted) return;
+
+  final data = loginData['data'] ?? loginData;
+
+  final user = data['user'];
+  final token = data['token'] ?? data['accessToken'];
+
+  if (token == null) {
+    throw Exception('Token not found in login response');
   }
 
-  try {
-    setState(() {
-      loading = true;
-      errorMessage = null;
-    });
-
-    await authService.login(
-      email: emailController.text.trim(),
-      password: passwordController.text.trim(),
+  if (user['role'] == 'EMPLOYER') {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EmployerDashboardScreen(
+          token: token,
+        ),
+      ),
     );
-
-    if (!mounted) return;
-
+  } else {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
         builder: (_) => const JobsScreen(),
       ),
     );
-  } catch (error) {
-    setState(() {
-      errorMessage = error.toString().replaceAll('Exception: ', '');
-    });
-  } finally {
-    if (mounted) {
-      setState(() {
-        loading = false;
-      });
-    }
   }
-}
+ }
 
   @override
   void dispose() {

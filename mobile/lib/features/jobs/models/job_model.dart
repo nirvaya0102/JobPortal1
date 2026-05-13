@@ -7,6 +7,8 @@ class JobModel {
   final String? salary;
   final String? type;
   final String? description;
+   final String status;
+    final int applicantsCount;
 
   JobModel({
     required this.id,
@@ -17,18 +19,22 @@ class JobModel {
     this.salary,
     this.type,
     this.description,
+     required this.status,
+        required this.applicantsCount,
   });
 
   factory JobModel.fromJson(Map<String, dynamic> json) {
     return JobModel(
-      id: json['id'] ?? '',
-      title: json['title'] ?? 'Untitled Job',
-      companyName: json['company']?['name'] ?? json['companyName'],
-      companyLogo: json['company']?['logo'] ?? json['companyLogo'],
-      location: json['location'],
+      id: json['id']?.toString() ?? '',
+      title: json['title']?.toString() ?? 'Untitled Job',
+      companyName: (json['company'] is Map ? json['company']['name'] : null)?.toString() ?? json['companyName']?.toString(),
+      companyLogo: (json['company'] is Map ? json['company']['logo'] : null)?.toString() ?? json['companyLogo']?.toString(),
+      location: json['location']?.toString(),
       salary: json['salary']?.toString(),
-      type: json['type'],
-      description: json['description'],
+      type: (json['type'] ?? json['jobType'])?.toString(),
+      description: json['description']?.toString(),
+      status: json['status']?.toString() ?? '',
+      applicantsCount: int.tryParse(json['applicantsCount']?.toString() ?? '') ?? 0,
     );
   }
 }

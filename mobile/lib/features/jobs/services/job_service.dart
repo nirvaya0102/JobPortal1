@@ -1,34 +1,108 @@
+import 'package:dio/dio.dart';
 import '../../../core/api/api_client.dart';
 import '../models/job_model.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../models/job_model.dart';
+
 
 class JobService {
-  Future<List<JobModel>> getJobs({
-    required int page,
-    int limit = 10,
-  }) async {
-    final response = await ApiClient.dio.get(
-      '/jobs',
-      queryParameters: {
-        'page': page,
-        'limit': limit,
-      },
-    );
 
-    final data = response.data['data'];
-    final jobsJson = data is List ? data : data['jobs'];
+ final String baseUrl = 'http://10.0.2.2:5000/api';
 
-    return List<JobModel>.from(
-      jobsJson.map((job) => JobModel.fromJson(job)),
-    );
+    Future<List<JobModel>> getMyJobs(String token) async {
+      final response = await http.get(
+        Uri.parse('$baseUrl/jobs/my-jobs'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        final List jobs = data['data']['jobs'] ?? [];
+        return jobs.map((job) => JobModel.fromJson(job)).toList();
+      }
+
+      throw Exception(data['message'] ?? 'Failed to load jobs');
+    }
+
+Future<List<JobModel>> getJobs({
+  int page = 1,
+  int limit = 10,
+}) async {
+  final response = await http.get(
+    Uri.parse('$baseUrl/jobs?page=$page&limit=$limit'),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  );
+
+  final decoded = jsonDecode(response.body);
+
+  if (response.statusCode == 200) {
+    final List data = decoded['data']['jobs'] ?? [];
+    return data.map((job) => JobModel.fromJson(job)).toList();
   }
 
+  throw Exception(decoded['message'] ?? 'Failed to load jobs');
+}
   Future<JobModel> getJobById(String id) async {
-  final response = await ApiClient.dio.get('/jobs/$id');
-
-  final data = response.data['data'];
-
-  final jobJson = data['job'] ?? data;
-
-  return JobModel.fromJson(jobJson);
+    try {
+      final response = await ApiClient.dio.get('jobs/$id');
+      final data = response.data['data'];
+      final jobJson = data['job'] ?? data;
+      return JobModel.fromJson(jobJson);
+    } on DioException catch (e) {
+      final message = e.response?.data['message'] ?? e.message ?? 'Failed to load job details';
+      throw Exception(message);
+    }
 }
+
+Future<void> createJob({
+  required String token,
+  required String title,
+  required String description,
+  required String location,
+  required String jobType,
+  required int salaryMin,
+  required int salaryMax,
+}) async {
+  final response = await http.post(
+    Uri.parse('$baseUrl/jobs'),
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    },
+    body: jsonEncode({
+      'title': title,
+      'description': description,
+      'location': location,
+      'jobType': jobType,
+      'salaryMin': salaryMin,
+      'salaryMax': salaryMax,
+    }),
+  );
+
+  final data = jsonDecode(response.body);
+
+   print('CREATE JOB STATUS: ${response.statusCode}');
+    print('CREATE JOB BODY: $data');
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return;
+    }
+
+    String message = data['message'] ?? 'Failed to create job';
+
+    if (data['errors'] != null) {
+      message = data['errors'].toString();
+    }
+
+    throw Exception(message);
+  }
 }
+
+

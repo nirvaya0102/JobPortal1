@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/job_model.dart';
+import '../../applications/screens/apply_job_screen.dart';
 import '../services/job_service.dart';
 
 class JobDetailScreen extends StatefulWidget {
@@ -53,8 +54,9 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
   @override
   Widget build(BuildContext context) {
     if (loading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        appBar: AppBar(title: const Text('Job Detail')),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -90,7 +92,14 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
           padding: const EdgeInsets.all(16),
           child: ElevatedButton(
             onPressed: () {
-              // Later: navigate to apply screen
+              Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => ApplyJobScreen(
+        jobId: widget.jobId,
+      ),
+    ),
+  );
             },
             child: const Text('Apply Now'),
           ),

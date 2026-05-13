@@ -1,38 +1,42 @@
 import 'package:dio/dio.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/storage/token_storage.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class AuthService {
-  Future<void> login({
-    required String email,
-    required String password,
-  }) async {
-    try {
-      final response = await ApiClient.dio.post(
-        '/auth/login',
-        data: {
-          'email': email,
-          'password': password,
-        },
-      );
 
-      final data = response.data;
-      final accessToken = data['data']?['accessToken'] ?? data['accessToken'];
-      final refreshToken = data['data']?['refreshToken'] ?? data['refreshToken'];
+ final String baseUrl = 'http://10.0.2.2:5000/api';
 
-      if (accessToken == null) {
-        throw Exception('Access token missing in response');
-      }
+Future<Map<String, dynamic>> login({
+  required String email,
+  required String password,
+}) async {
+  final response = await http.post(
+    Uri.parse('$baseUrl/auth/login'),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: jsonEncode({
+      'email': email,
+      'password': password,
+    }),
+  );
 
-      await TokenStorage.saveTokens(
-        accessToken: accessToken,
-        refreshToken: refreshToken ?? '',
-      );
-    } on DioException catch (e) {
-      final message = e.response?.data['message'] ?? e.message ?? 'Login failed';
-      throw Exception(message);
+
+
+  final data = jsonDecode(response.body);
+  print('LOGIN STATUS: ${response.statusCode}');
+    print('LOGIN BODY: $data');
+
+  print('LOGIN RESPONSE: $data');
+
+   if (response.statusCode == 200 || response.statusCode == 201) {
+      return data;
     }
-  }
+
+  throw Exception(data['message'] ?? 'Login failed');
+}
 
 
 Future<void> register({
@@ -40,14 +44,18 @@ Future<void> register({
   required String email,
   required String password,
   required String role,
+    String? companyName,
+    String? companyLocation,
 }) async {
   await ApiClient.dio.post(
-    '/auth/register',
+    'auth/register',
     data: {
       'name': name,
       'email': email,
       'password': password,
       'role': role,
+       if (companyName != null) 'companyName': companyName,
+          if (companyLocation != null) 'companyLocation': companyLocation,
     },
   );
 }

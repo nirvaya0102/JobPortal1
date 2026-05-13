@@ -11,3 +11,13 @@ export const requireRole = (role: string) => {
         next();
     };
 };
+
+export const employerOnly = (req, res, next) => {
+  if (req.user.role !== "EMPLOYER") {
+    return res.status(403).json({
+      message: "Only employers can access this route",
+    });
+  }
+
+  next();
+};

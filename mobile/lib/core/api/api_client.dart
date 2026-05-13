@@ -4,7 +4,7 @@ import '../storage/token_storage.dart';
 class ApiClient {
   static final Dio dio = Dio(
     BaseOptions(
-      baseUrl: 'http://10.0.2.2:5000/api',
+      baseUrl: 'http://10.0.2.2:5000/api/',
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 10),
       headers: {
@@ -98,14 +98,15 @@ class ApiClient {
     );
 
     final response = await refreshDio.post(
-      '/auth/refresh-token',
+      'auth/refresh',
       data: {
         'refreshToken': refreshToken,
       },
     );
 
-    final newAccessToken = response.data['accessToken'];
-    final newRefreshToken = response.data['refreshToken'];
+    final data = response.data['data'];
+    final newAccessToken = data['accessToken'];
+    final newRefreshToken = data['refreshToken'];
 
     if (newAccessToken == null) {
       throw Exception('Access token not found');

@@ -17,6 +17,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final passwordController = TextEditingController();
   final confirmPasswordController = TextEditingController();
 
+  final companyNameController = TextEditingController();
+  final companyLocationController = TextEditingController();
+
   bool loading = false;
   bool showPassword = false;
   bool acceptedTerms = false;
@@ -29,6 +32,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
     final confirmPassword = confirmPasswordController.text.trim();
+
+    final companyName = companyNameController.text.trim();
+    final companyLocation = companyLocationController.text.trim();
+
+
+
+    if (role == 'EMPLOYER') {
+
+      if (companyName.isEmpty || companyLocation.isEmpty) {
+        setState(() {
+          errorMessage = 'Company name and location are required for employer.';
+        });
+        return;
+      }
+    }
 
     if (name.isEmpty || email.isEmpty || password.isEmpty) {
       setState(() {
@@ -76,6 +94,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         email: email,
         password: password,
         role: role,
+        companyName: role == 'EMPLOYER' ? companyName : null,
+        companyLocation: role == 'EMPLOYER' ? companyLocation : null,
       );
 
       if (!mounted) return;
@@ -111,7 +131,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     emailController.dispose();
     passwordController.dispose();
     confirmPasswordController.dispose();
-
+companyNameController.dispose();
+companyLocationController.dispose();
     super.dispose();
   }
 
@@ -124,7 +145,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 40),
+              IconButton(
+                padding: EdgeInsets.zero,
+                alignment: Alignment.centerLeft,
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => Navigator.pop(context),
+              ),
+              const SizedBox(height: 20),
 
               const Text(
                 'Create Account',
@@ -222,6 +249,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   }
                 },
               ),
+
+              if (role == 'EMPLOYER') ...[
+                const SizedBox(height: 16),
+
+                TextField(
+                  controller: companyNameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Company Name',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                TextField(
+                  controller: companyLocationController,
+                  decoration: const InputDecoration(
+                    labelText: 'Company Location',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
 
               const SizedBox(height: 12),
 

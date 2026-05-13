@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../auth/screens/login_screen.dart';
+import '../../auth/services/auth_service.dart';
 import '../models/job_model.dart';
 import '../services/job_service.dart';
 import '../widgets/job_card.dart';
@@ -12,6 +14,7 @@ class JobsScreen extends StatefulWidget {
 
 class _JobsScreenState extends State<JobsScreen> {
   final JobService jobService = JobService();
+  final AuthService authService = AuthService();
   final ScrollController scrollController = ScrollController();
 
   List<JobModel> jobs = [];
@@ -111,7 +114,23 @@ class _JobsScreenState extends State<JobsScreen> {
   Widget build(BuildContext context) {
     if (loading) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Available Jobs')),
+        appBar: AppBar(
+          title: const Text('Available Jobs'),
+          actions: [
+            IconButton(
+              onPressed: () async {
+                await authService.logout();
+                if (!mounted) return;
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  (route) => false,
+                );
+              },
+              icon: const Icon(Icons.logout),
+            ),
+          ],
+        ),
         body: buildSkeleton(),
       );
     }
@@ -119,6 +138,20 @@ class _JobsScreenState extends State<JobsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Available Jobs'),
+        actions: [
+          IconButton(
+            onPressed: () async {
+              await authService.logout();
+              if (!mounted) return;
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                (route) => false,
+              );
+            },
+            icon: const Icon(Icons.logout),
+          ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: fetchJobs,
