@@ -44,6 +44,7 @@ class _LoginScreenState extends State<LoginScreen> {
       MaterialPageRoute(
         builder: (_) => EmployerDashboardScreen(
           token: token,
+          name: user['name'],
         ),
       ),
     );

@@ -4,8 +4,7 @@ import '../models/job_model.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/job_model.dart';
-
-
+import '../models/application_model.dart';
 class JobService {
 
  final String baseUrl = 'http://10.0.2.2:5000/api';
@@ -103,6 +102,40 @@ Future<void> createJob({
 
     throw Exception(message);
   }
-}
 
+  Future<List<ApplicationModel>> getJobApplicants(String jobId) async {
+    try {
+      final response = await ApiClient.dio.get('jobs/$jobId/applicants');
+      final data = response.data['data'];
+      final List applicantsJson = data['applicants'] ?? [];
+      return applicantsJson.map((json) => ApplicationModel.fromJson(json)).toList();
+    } on DioException catch (e) {
+      final message = e.response?.data['message'] ?? e.message ?? 'Failed to load applicants';
+      throw Exception(message);
+    }
+  }
+
+  Future<String> getApplicationResume(String jobId, String applicationId) async {
+    try {
+      final response = await ApiClient.dio.get('jobs/$jobId/applications/$applicationId/resume');
+      final data = response.data['data'];
+      return data['url'] ?? '';
+    } on DioException catch (e) {
+      final message = e.response?.data['message'] ?? e.message ?? 'Failed to load resume';
+      throw Exception(message);
+    }
+  }
+
+  Future<void> updateApplicationStatus(String jobId, String applicationId, String status) async {
+    try {
+      await ApiClient.dio.patch(
+        'jobs/$jobId/applications/$applicationId/status',
+        data: {'status': status},
+      );
+    } on DioException catch (e) {
+      final message = e.response?.data['message'] ?? e.message ?? 'Failed to update status';
+      throw Exception(message);
+    }
+  }
+}
 

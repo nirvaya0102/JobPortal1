@@ -24,6 +24,13 @@ class JobModel {
   });
 
   factory JobModel.fromJson(Map<String, dynamic> json) {
+    int parsedApplicantsCount = 0;
+    if (json['applicantsCount'] != null) {
+      parsedApplicantsCount = int.tryParse(json['applicantsCount'].toString()) ?? 0;
+    } else if (json['_count'] != null && json['_count']['applications'] != null) {
+      parsedApplicantsCount = int.tryParse(json['_count']['applications'].toString()) ?? 0;
+    }
+
     return JobModel(
       id: json['id']?.toString() ?? '',
       title: json['title']?.toString() ?? 'Untitled Job',
@@ -34,7 +41,7 @@ class JobModel {
       type: (json['type'] ?? json['jobType'])?.toString(),
       description: json['description']?.toString(),
       status: json['status']?.toString() ?? '',
-      applicantsCount: int.tryParse(json['applicantsCount']?.toString() ?? '') ?? 0,
+      applicantsCount: parsedApplicantsCount,
     );
   }
 }

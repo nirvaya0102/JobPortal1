@@ -1,41 +1,41 @@
 import 'package:dio/dio.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/storage/token_storage.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 
 class AuthService {
-
- final String baseUrl = 'http://10.0.2.2:5000/api';
 
 Future<Map<String, dynamic>> login({
   required String email,
   required String password,
 }) async {
-  final response = await http.post(
-    Uri.parse('$baseUrl/auth/login'),
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: jsonEncode({
-      'email': email,
-      'password': password,
-    }),
-  );
+  try {
+    final response = await ApiClient.dio.post(
+      'auth/login',
+      data: {
+        'email': email,
+        'password': password,
+      },
+    );
 
+    final data = response.data;
+    print('LOGIN STATUS: ${response.statusCode}');
+    print('LOGIN RESPONSE: $data');
 
+    final responseData = data['data'] ?? data;
+    final token = responseData['token'] ?? responseData['accessToken'];
+    final refreshToken = responseData['refreshToken'] ?? '';
 
-  final data = jsonDecode(response.body);
-  print('LOGIN STATUS: ${response.statusCode}');
-    print('LOGIN BODY: $data');
-
-  print('LOGIN RESPONSE: $data');
-
-   if (response.statusCode == 200 || response.statusCode == 201) {
-      return data;
+    if (token != null) {
+      await TokenStorage.saveTokens(
+        accessToken: token,
+        refreshToken: refreshToken,
+      );
     }
 
-  throw Exception(data['message'] ?? 'Login failed');
+    return data;
+  } on DioException catch (e) {
+    throw Exception(e.response?.data['message'] ?? 'Login failed');
+  }
 }
 
 

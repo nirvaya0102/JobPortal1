@@ -68,6 +68,9 @@ export const getAllJobs = asyncHandler(async (req: Request, res: Response) => {
       orderBy,
       include: {
         company: true,
+        _count: {
+          select: { applications: true },
+        },
       },
     }),
     prisma.job.count(),
@@ -104,6 +107,9 @@ export const getMyJobs = asyncHandler(async (req: any, res: Response) => {
       orderBy,
       include: {
         company: true,
+        _count: {
+          select: { applications: true },
+        },
       },
     }),
     prisma.job.count({ where }),
