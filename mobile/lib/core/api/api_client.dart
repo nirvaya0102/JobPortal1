@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'dart:async';
 import '../storage/token_storage.dart';
 
 class ApiClient {
@@ -7,15 +8,12 @@ class ApiClient {
       baseUrl: 'http://10.0.2.2:5000/api/',
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 10),
-      headers: {
-        'Content-Type': 'application/json',
-        'x-client-type': 'mobile',
-      },
+      headers: {'Content-Type': 'application/json', 'x-client-type': 'mobile'},
     ),
   );
 
   static bool _isRefreshing = false;
-  static final List<Function(String)> _retryQueue = [];
+  static Completer<String?>? _refreshCompleter;
 
   static void setupInterceptors() {
     dio.interceptors.clear();
@@ -43,6 +41,13 @@ class ApiClient {
             return handler.next(error);
           }
 
+          // Avoid infinite loops if refresh itself is unauthorized.
+          final path = error.requestOptions.path;
+          if (path.contains('auth/refresh')) {
+            await TokenStorage.clearTokens();
+            return handler.reject(error);
+          }
+
           final refreshToken = await TokenStorage.getRefreshToken();
 
           if (refreshToken == null || refreshToken.isEmpty) {
@@ -51,40 +56,40 @@ class ApiClient {
           }
 
           if (_isRefreshing) {
-            _retryQueue.add((newAccessToken) async {
-              final requestOptions = error.requestOptions;
-              requestOptions.headers['Authorization'] = 'Bearer $newAccessToken';
+            final token = await _refreshCompleter?.future;
+            if (token == null || token.isEmpty) {
+              await TokenStorage.clearTokens();
+              return handler.reject(error);
+            }
 
-              final response = await dio.fetch(requestOptions);
-              handler.resolve(response);
-            });
-
-            return;
+            final requestOptions = error.requestOptions;
+            requestOptions.headers['Authorization'] = 'Bearer $token';
+            final response = await dio.fetch(requestOptions);
+            return handler.resolve(response);
           }
 
           _isRefreshing = true;
+          _refreshCompleter = Completer<String?>();
 
+          String? newAccessToken;
           try {
-            final newAccessToken = await _refreshAccessToken(refreshToken);
-
-            for (final retry in _retryQueue) {
-              retry(newAccessToken);
-            }
-
-            _retryQueue.clear();
-
-            final requestOptions = error.requestOptions;
-            requestOptions.headers['Authorization'] = 'Bearer $newAccessToken';
-
-            final response = await dio.fetch(requestOptions);
-            return handler.resolve(response);
+            newAccessToken = await _refreshAccessToken(refreshToken);
+            _refreshCompleter?.complete(newAccessToken);
           } catch (_) {
-            _retryQueue.clear();
+            _refreshCompleter?.complete(null);
             await TokenStorage.clearTokens();
-            return handler.reject(error);
           } finally {
             _isRefreshing = false;
           }
+
+          if (newAccessToken == null || newAccessToken.isEmpty) {
+            return handler.reject(error);
+          }
+
+          final requestOptions = error.requestOptions;
+          requestOptions.headers['Authorization'] = 'Bearer $newAccessToken';
+          final response = await dio.fetch(requestOptions);
+          return handler.resolve(response);
         },
       ),
     );
@@ -105,9 +110,7 @@ class ApiClient {
 
     final response = await refreshDio.post(
       'auth/refresh',
-      data: {
-        'refreshToken': refreshToken,
-      },
+      data: {'refreshToken': refreshToken},
     );
 
     final data = response.data['data'];

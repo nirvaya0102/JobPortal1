@@ -2,10 +2,25 @@ import 'package:flutter/material.dart';
 import 'core/api/api_client.dart';
 import 'features/auth/screens/auth_check_screen.dart';
 import 'features/auth/screens/login_screen.dart';
-import 'features/jobs/screens/jobs_screen.dart';
+import 'features/jobs/screens/candidate_main_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'core/services/notification_service.dart';
+import 'firebase_options.dart';
 
-void main() {
- ApiClient.setupInterceptors();
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    await NotificationService.initialize();
+  } catch (e) {
+    print(
+      "Firebase initialization failed. Please run flutterfire configure: $e",
+    );
+  }
+
+  ApiClient.setupInterceptors();
   runApp(const MyApp());
 }
 
@@ -14,7 +29,6 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return MaterialApp(
       debugShowCheckedModeBanner: false,
 
@@ -25,8 +39,7 @@ class MyApp extends StatelessWidget {
 
         '/login': (context) => const LoginScreen(),
 
-        '/home': (context) => const JobsScreen(),
-      
+        '/home': (context) => const CandidateMainScreen(),
       },
     );
   }

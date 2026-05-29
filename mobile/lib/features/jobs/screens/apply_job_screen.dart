@@ -2,14 +2,14 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import '../services/application_service.dart';
+import '../../../shared/widgets/candidate_footer.dart';
+import '../screens/candidate_main_screen.dart';
 
 class ApplyJobScreen extends StatefulWidget {
   final String jobId;
+  final int currentIndex;
 
-  const ApplyJobScreen({
-    super.key,
-    required this.jobId,
-  });
+  const ApplyJobScreen({super.key, required this.jobId, this.currentIndex = 0});
 
   @override
   State<ApplyJobScreen> createState() => _ApplyJobScreenState();
@@ -79,9 +79,7 @@ class _ApplyJobScreenState extends State<ApplyJobScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Application submitted successfully.'),
-        ),
+        const SnackBar(content: Text('Application submitted successfully.')),
       );
 
       Navigator.pop(context);
@@ -104,14 +102,22 @@ class _ApplyJobScreenState extends State<ApplyJobScreen> {
     super.dispose();
   }
 
+  void _goToTab(int index) {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CandidateMainScreen(initialIndex: index),
+      ),
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final fileName = selectedResume?.path.split('/').last;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Apply to Job'),
-      ),
+      appBar: AppBar(title: const Text('Apply to Job')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -119,9 +125,7 @@ class _ApplyJobScreenState extends State<ApplyJobScreen> {
             OutlinedButton.icon(
               onPressed: loading ? null : pickResume,
               icon: const Icon(Icons.upload_file),
-              label: Text(
-                fileName ?? 'Select Resume PDF/DOCX',
-              ),
+              label: Text(fileName ?? 'Select Resume PDF/DOCX'),
             ),
 
             const SizedBox(height: 16),
@@ -146,10 +150,7 @@ class _ApplyJobScreenState extends State<ApplyJobScreen> {
 
             if (errorMessage != null) ...[
               const SizedBox(height: 16),
-              Text(
-                errorMessage!,
-                style: const TextStyle(color: Colors.red),
-              ),
+              Text(errorMessage!, style: const TextStyle(color: Colors.red)),
             ],
 
             const SizedBox(height: 24),
@@ -159,13 +160,15 @@ class _ApplyJobScreenState extends State<ApplyJobScreen> {
               height: 48,
               child: ElevatedButton(
                 onPressed: loading ? null : submitApplication,
-                child: Text(
-                  loading ? 'Submitting...' : 'Submit Application',
-                ),
+                child: Text(loading ? 'Submitting...' : 'Submit Application'),
               ),
             ),
           ],
         ),
+      ),
+      bottomNavigationBar: CandidateFooter(
+        currentIndex: widget.currentIndex,
+        onTap: _goToTab,
       ),
     );
   }

@@ -2,13 +2,17 @@ import 'package:flutter/material.dart';
 import '../models/job_model.dart';
 import '../../applications/screens/apply_job_screen.dart';
 import '../services/job_service.dart';
+import '../../../shared/widgets/candidate_footer.dart';
+import 'candidate_main_screen.dart';
 
 class JobDetailScreen extends StatefulWidget {
   final String jobId;
+  final int currentIndex;
 
   const JobDetailScreen({
     super.key,
     required this.jobId,
+    this.currentIndex = 0,
   });
 
   @override
@@ -51,6 +55,16 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
     }
   }
 
+  void _goToTab(int index) {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CandidateMainScreen(initialIndex: index),
+      ),
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (loading) {
@@ -77,56 +91,58 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
     }
 
     if (job == null) {
-      return const Scaffold(
-        body: Center(child: Text('Job not found')),
-      );
+      return const Scaffold(body: Center(child: Text('Job not found')));
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Job Detail'),
-      ),
+      appBar: AppBar(title: const Text('Job Detail')),
 
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: ElevatedButton(
-            onPressed: () {
-              Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => ApplyJobScreen(
-        jobId: widget.jobId,
-      ),
-    ),
-  );
-            },
-            child: const Text('Apply Now'),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ApplyJobScreen(
+                          jobId: widget.jobId,
+                          currentIndex: widget.currentIndex,
+                        ),
+                      ),
+                    );
+                  },
+                  child: const Text('Apply Now'),
+                ),
+              ),
+            ),
           ),
-        ),
+          CandidateFooter(currentIndex: widget.currentIndex, onTap: _goToTab),
+        ],
       ),
 
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 160),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               job!.title,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
 
             const SizedBox(height: 8),
 
             Text(
               job!.companyName ?? 'Unknown Company',
-              style: const TextStyle(
-                fontSize: 16,
-                color: Colors.grey,
-              ),
+              style: const TextStyle(fontSize: 16, color: Colors.grey),
             ),
 
             const SizedBox(height: 16),
@@ -135,14 +151,11 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                if (job!.location != null)
-                  Chip(label: Text(job!.location!)),
+                if (job!.location != null) Chip(label: Text(job!.location!)),
 
-                if (job!.salary != null)
-                  Chip(label: Text(job!.salary!)),
+                if (job!.salary != null) Chip(label: Text(job!.salary!)),
 
-                if (job!.type != null)
-                  Chip(label: Text(job!.type!)),
+                if (job!.type != null) Chip(label: Text(job!.type!)),
               ],
             ),
 
@@ -154,9 +167,7 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
               children: [
                 Padding(
                   padding: const EdgeInsets.all(12),
-                  child: Text(
-                    job!.description ?? 'No description available.',
-                  ),
+                  child: Text(job!.description ?? 'No description available.'),
                 ),
               ],
             ),

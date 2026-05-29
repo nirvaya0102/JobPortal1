@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../auth/screens/login_screen.dart';
-import '../../auth/services/auth_service.dart';
 import '../models/job_model.dart';
 import '../services/job_service.dart';
 import '../widgets/job_card.dart';
@@ -14,7 +12,6 @@ class JobsScreen extends StatefulWidget {
 
 class _JobsScreenState extends State<JobsScreen> {
   final JobService jobService = JobService();
-  final AuthService authService = AuthService();
   final ScrollController scrollController = ScrollController();
 
   List<JobModel> jobs = [];
@@ -76,10 +73,7 @@ class _JobsScreenState extends State<JobsScreen> {
       });
 
       final nextPage = page + 1;
-      final result = await jobService.getJobs(
-        page: nextPage,
-        limit: limit,
-      );
+      final result = await jobService.getJobs(page: nextPage, limit: limit);
 
       setState(() {
         page = nextPage;
@@ -97,7 +91,7 @@ class _JobsScreenState extends State<JobsScreen> {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: 6,
-      itemBuilder: (_, __) {
+      itemBuilder: (context, index) {
         return Container(
           height: 120,
           margin: const EdgeInsets.only(bottom: 14),
@@ -113,98 +107,58 @@ class _JobsScreenState extends State<JobsScreen> {
   @override
   Widget build(BuildContext context) {
     if (loading) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Available Jobs'),
-          actions: [
-            IconButton(
-              onPressed: () async {
-                await authService.logout();
-                if (!mounted) return;
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                  (route) => false,
-                );
-              },
-              icon: const Icon(Icons.logout),
-            ),
-          ],
-        ),
-        body: buildSkeleton(),
-      );
+      return buildSkeleton();
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Available Jobs'),
-        actions: [
-          IconButton(
-            onPressed: () async {
-              await authService.logout();
-              if (!mounted) return;
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-                (route) => false,
-              );
-            },
-            icon: const Icon(Icons.logout),
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: fetchJobs,
-        child: errorMessage != null
-            ? ListView(
-                padding: const EdgeInsets.all(20),
-                children: [
-                  const SizedBox(height: 120),
-                  const Icon(Icons.error_outline, size: 48),
-                  const SizedBox(height: 12),
-                  Text(
-                    errorMessage!,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.red),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: fetchJobs,
-                    child: const Text('Retry'),
-                  ),
-                ],
-              )
-            : jobs.isEmpty
-                ? ListView(
-                    padding: const EdgeInsets.all(20),
-                    children: const [
-                      SizedBox(height: 120),
-                      Icon(Icons.work_outline, size: 56),
-                      SizedBox(height: 12),
-                      Text(
-                        'No jobs available right now.',
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  )
-                : ListView.builder(
-                    controller: scrollController,
-                    padding: const EdgeInsets.all(16),
-                    itemCount: jobs.length + (loadingMore ? 1 : 0),
-                    itemBuilder: (context, index) {
-                      if (index == jobs.length) {
-                        return const Padding(
-                          padding: EdgeInsets.all(16),
-                          child: Center(
-                            child: CircularProgressIndicator(),
-                          ),
-                        );
-                      }
+    return RefreshIndicator(
+      onRefresh: fetchJobs,
+      child: errorMessage != null
+          ? ListView(
+              padding: const EdgeInsets.all(20),
+              children: [
+                const SizedBox(height: 120),
+                const Icon(Icons.error_outline, size: 48),
+                const SizedBox(height: 12),
+                Text(
+                  errorMessage!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.red),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: fetchJobs,
+                  child: const Text('Retry'),
+                ),
+              ],
+            )
+          : jobs.isEmpty
+          ? ListView(
+              padding: const EdgeInsets.all(20),
+              children: const [
+                SizedBox(height: 120),
+                Icon(Icons.work_outline, size: 56),
+                SizedBox(height: 12),
+                Text(
+                  'No jobs available right now.',
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            )
+          : ListView.builder(
+              controller: scrollController,
+              padding: const EdgeInsets.all(16),
+              itemCount: jobs.length + (loadingMore ? 1 : 0),
+              itemBuilder: (context, index) {
+                if (index == jobs.length) {
+                  return const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
 
-                      return JobCard(job: jobs[index]);
-                    },
-                  ),
-      ),
+                return JobCard(job: jobs[index]);
+              },
+            ),
     );
   }
 

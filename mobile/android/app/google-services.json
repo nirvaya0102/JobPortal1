@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "186218929331",
+    "project_id": "rojgar-kendra-b2fb8",
+    "storage_bucket": "rojgar-kendra-b2fb8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:186218929331:android:d2b9e01686405ea4cae4c6",
+        "android_client_info": {
+          "package_name": "com.example.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDpaH9ZLjNeGzEjJRE6zbknutOowt1xmOA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
