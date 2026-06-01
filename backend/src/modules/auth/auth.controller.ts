@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import prisma from "../../lib/prisma";
 import {
   forgotPasswordService,
   loginUser,
@@ -130,11 +131,25 @@ export const verifyEmail = asyncHandler(
 );
 
 export const getMe = asyncHandler(async (req: any, res: Response) => {
+  const userId = req.user?.userId;
+
+  if (!userId) {
+    throw new AppError("Unauthorized", 401);
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      company: true,
+      candidateProfile: true,
+    },
+  });
+
   return sendSuccess({
     res,
     message: "Authenticated user retrieved successfully",
     data: {
-      user: req.user,
+      user,
     },
   });
 });
@@ -182,3 +197,19 @@ export const refreshToken = asyncHandler(
     });
   }
 );
+
+export const updateFcmToken = asyncHandler(async (req: any, res: Response) => {
+  const { fcmToken } = req.body;
+  
+  if (fcmToken) {
+    await prisma.user.update({
+      where: { id: req.user.userId },
+      data: { fcmToken },
+    });
+  }
+
+  return sendSuccess({
+    res,
+    message: "FCM token updated successfully",
+  });
+});

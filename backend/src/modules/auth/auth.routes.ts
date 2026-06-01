@@ -9,6 +9,7 @@ import {
   verifyEmail,
   resendVerificationEmail,
   refreshToken,
+  updateFcmToken,
 } from "./auth.controller";
 
 import { authMiddleware } from "../../middleware/auth.middleware";
@@ -68,6 +69,12 @@ router.get(
     "ADMIN"
   ),
   getMe
+);
+
+router.patch(
+  "/fcm-token",
+  authMiddleware,
+  updateFcmToken
 );
 
 export default router;

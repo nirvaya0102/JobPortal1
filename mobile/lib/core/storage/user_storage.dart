@@ -7,6 +7,7 @@ class UserStorage {
   static const String _roleKey = 'user_role';
   static const String _locationKey = 'user_location';
   static const String _emailKey = 'user_email';
+  static const String _rememberMeEmailKey = 'remember_me_email';  // AUTH-006
 
   static Future<void> saveUser({
     required String name,
@@ -28,6 +29,16 @@ class UserStorage {
   static Future<String?> getRole() => _storage.read(key: _roleKey);
   static Future<String?> getLocation() => _storage.read(key: _locationKey);
   static Future<String?> getEmail() => _storage.read(key: _emailKey);
+
+  // AUTH-006: Remember me functionality
+  static Future<void> saveRememberMeEmail(String email) =>
+      _storage.write(key: _rememberMeEmailKey, value: email);
+
+  static Future<String?> getRememberMeEmail() =>
+      _storage.read(key: _rememberMeEmailKey);
+
+  static Future<void> clearRememberMeEmail() =>
+      _storage.delete(key: _rememberMeEmailKey);
 
   static Future<void> clear() async {
     await _storage.delete(key: _nameKey);

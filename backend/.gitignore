@@ -1,9 +1,36 @@
-node_modules
-# Keep environment variables out of version control
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+
+# Environment variables
 .env
-node_modules
-dist
+.env.local
+.env.*.local
 
-.prisma
+# Build outputs
+dist/
+build/
+*.log
 
+# Prisma
+.prisma/
 /src/generated/prisma
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploads (local testing)
+/uploads/
+
+# Node
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

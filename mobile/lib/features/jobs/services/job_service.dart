@@ -44,6 +44,31 @@ class JobService {
     throw Exception(decoded['message'] ?? 'Failed to load jobs');
   }
 
+  // SEARCH-001: Search functionality
+  Future<List<JobModel>> searchJobs({
+    required String query,
+    int page = 1,
+    int limit = 10,
+  }) async {
+    if (query.isEmpty) {
+      return getJobs(page: page, limit: limit);
+    }
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/jobs/search?q=$query&page=$page&limit=$limit'),
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    final decoded = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      final List data = decoded['data']['jobs'] ?? [];
+      return data.map((job) => JobModel.fromJson(job)).toList();
+    }
+
+    throw Exception(decoded['message'] ?? 'Search failed');
+  }
+
   Future<JobModel> getJobById(String id) async {
     try {
       final response = await ApiClient.dio.get('jobs/$id');

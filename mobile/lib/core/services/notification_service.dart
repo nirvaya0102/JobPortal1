@@ -61,7 +61,12 @@ class NotificationService {
       iOS: iosSettings,
     );
 
-    await _localNotifications.initialize(settings: initSettings);
+    await _localNotifications.initialize(
+      initSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        // Handle notification tap
+      },
+    );
 
     await _createAndroidChannel();
     await _requestAndroidNotificationPermissionIfNeeded();
@@ -104,12 +109,12 @@ class NotificationService {
       iOS: DarwinNotificationDetails(presentAlert: true, presentSound: true),
     );
 
-    _localNotifications.show(
-      id: message.hashCode,
-      title: title,
-      body: body,
-      notificationDetails: details,
-    );
+     _localNotifications.show(
+    message.hashCode,
+    title,
+    body,
+    details,
+  );
   }
 
   static Future<void> _createAndroidChannel() async {

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-import '../services/candidate_profile_service.dart';
-import '../../auth/services/auth_service.dart';
-import '../../auth/screens/login_screen.dart';
 import '../../../core/storage/user_storage.dart';
+import '../../auth/screens/login_screen.dart';
+import '../../auth/services/auth_service.dart';
+import '../services/candidate_profile_service.dart';
 
 class CandidateProfileScreen extends StatefulWidget {
   const CandidateProfileScreen({super.key});
@@ -15,7 +16,7 @@ class CandidateProfileScreen extends StatefulWidget {
 class _CandidateProfileScreenState extends State<CandidateProfileScreen>
     with SingleTickerProviderStateMixin {
   late final CandidateProfileService _service;
-  late final Future<dynamic> _profileFuture;
+  late Future<dynamic> _profileFuture;
   late final AnimationController _controller;
   late final Animation<double> _fadeAnimation;
 
@@ -28,10 +29,7 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
       vsync: this,
       duration: const Duration(milliseconds: 500),
     );
-    _fadeAnimation = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOut,
-    );
+    _fadeAnimation = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
     _controller.forward();
   }
 
@@ -39,6 +37,197 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  void _refreshProfile() {
+    setState(() {
+      _profileFuture = _service.fetchProfile();
+    });
+  }
+
+  void _showFeatureNote(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _openMail(String email) async {
+    final uri = Uri.parse('mailto:$email');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+      return;
+    }
+    _showFeatureNote('Unable to open email app right now.');
+  }
+
+  Future<void> _openMap(String location) async {
+    final query = Uri.encodeComponent(location);
+    final uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$query');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      return;
+    }
+    _showFeatureNote('Unable to open maps right now.');
+  }
+
+  void _showResumeDetails(dynamic profile) {
+    final resumeText = profile.hasResume
+        ? (profile.resumeFileName.isNotEmpty ? profile.resumeFileName : 'Resume uploaded')
+        : 'No resume uploaded yet';
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Resume'),
+        content: Text(resumeText),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditProfileOptions(dynamic profile) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.interests_outlined),
+                  title: const Text('Edit Skills'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _showSkillsEditor(profile.skills);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.refresh_rounded),
+                  title: const Text('Refresh Profile'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _refreshProfile();
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _onProfileItemTap(String title, dynamic profile) {
+    switch (title) {
+      case 'Skills':
+        _showSkillsEditor(profile.skills);
+        break;
+      case 'Email':
+        _openMail(profile.email);
+        break;
+      case 'Location':
+        _openMap(profile.location);
+        break;
+      case 'Resume':
+        _showResumeDetails(profile);
+        break;
+      case 'Profile Status':
+        _showFeatureNote('Complete your headline, bio, and skills to improve profile visibility.');
+        break;
+      case 'Job Alerts':
+        _showFeatureNote('Job alert settings will be available soon.');
+        break;
+      default:
+        _showFeatureNote('This section is read-only for now.');
+    }
+  }
+
+  void _showSkillsEditor(List<String> currentSkills) {
+    final skillsController = TextEditingController(text: currentSkills.join(', '));
+
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Edit Skills'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Enter your skills separated by commas.'),
+              const SizedBox(height: 16),
+              TextField(
+                controller: skillsController,
+                maxLines: 4,
+                decoration: const InputDecoration(
+                  hintText: 'e.g. Flutter, Dart, UI Design',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                skillsController.dispose();
+                Navigator.pop(dialogContext);
+              },
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final skillsText = skillsController.text.trim();
+                if (skillsText.isEmpty) {
+                  skillsController.dispose();
+                  Navigator.pop(dialogContext);
+                  return;
+                }
+
+                final skills = skillsText
+                    .split(',')
+                    .map((skill) => skill.trim())
+                    .where((skill) => skill.isNotEmpty)
+                    .toList();
+
+                try {
+                  await _service.updateSkills(skills);
+                  if (!context.mounted) {
+                    skillsController.dispose();
+                    return;
+                  }
+                  Navigator.pop(dialogContext);
+                  _refreshProfile();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Skills updated successfully')),
+                  );
+                } catch (e) {
+                  if (!context.mounted) {
+                    skillsController.dispose();
+                    return;
+                  }
+                  Navigator.pop(dialogContext);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error: ${e.toString().replaceAll('Exception: ', '')}'),
+                    ),
+                  );
+                } finally {
+                  skillsController.dispose();
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -69,9 +258,16 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
-                child: Text(
-                  snapshot.error.toString().replaceAll('Exception: ', ''),
-                  textAlign: TextAlign.center,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Something went wrong. Please try again.',
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton(onPressed: _refreshProfile, child: const Text('Retry')),
+                  ],
                 ),
               ),
             );
@@ -83,52 +279,28 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
           }
 
           final stats = [
-            _ProfileStat(
-              value: '${profile.profileCompletion}%',
-              label: 'Completion',
-            ),
-            _ProfileStat(
-              value: profile.applicationsCount.toString(),
-              label: 'Applications',
-            ),
-            _ProfileStat(
-              value: profile.skills.length.toString(),
-              label: 'Skills',
-            ),
-            _ProfileStat(
-              value: profile.hasResume ? '1' : '0',
-              label: 'Resumes',
-            ),
+            _ProfileStat(value: '${profile.profileCompletion}%', label: 'Completion'),
+            _ProfileStat(value: profile.applicationsCount.toString(), label: 'Applications'),
+            _ProfileStat(value: profile.skills.length.toString(), label: 'Skills'),
+            _ProfileStat(value: profile.hasResume ? '1' : '0', label: 'Resumes'),
           ];
 
           final sections = [
             _ProfileSection(
               title: 'About',
               items: [
-                _ProfileRowItem(
-                  icon: Icons.work_outline,
-                  title: 'Headline',
-                  subtitle: profile.headline,
-                ),
-                _ProfileRowItem(
-                  icon: Icons.notes_outlined,
-                  title: 'Bio',
-                  subtitle: profile.bio,
-                ),
+                _ProfileRowItem(icon: Icons.work_outline, title: 'Headline', subtitle: profile.headline),
+                _ProfileRowItem(icon: Icons.notes_outlined, title: 'Bio', subtitle: profile.bio),
                 _ProfileRowItem(
                   icon: Icons.interests_outlined,
                   title: 'Skills',
-                  subtitle: profile.skills.isEmpty
-                      ? 'No skills added yet'
-                      : profile.skills.join(' Â· '),
+                  subtitle: profile.skills.isEmpty ? 'No skills added yet' : profile.skills.join(' · '),
                 ),
                 _ProfileRowItem(
                   icon: Icons.description_outlined,
                   title: 'Resume',
                   subtitle: profile.hasResume
-                      ? (profile.resumeFileName.isNotEmpty
-                            ? profile.resumeFileName
-                            : 'Resume uploaded')
+                      ? (profile.resumeFileName.isNotEmpty ? profile.resumeFileName : 'Resume uploaded')
                       : 'No resume uploaded yet',
                 ),
               ],
@@ -136,26 +308,10 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
             _ProfileSection(
               title: 'Account',
               items: [
-                _ProfileRowItem(
-                  icon: Icons.person_outline,
-                  title: 'Name',
-                  subtitle: profile.name,
-                ),
-                _ProfileRowItem(
-                  icon: Icons.badge_outlined,
-                  title: 'Role',
-                  subtitle: profile.role,
-                ),
-                _ProfileRowItem(
-                  icon: Icons.location_on_outlined,
-                  title: 'Location',
-                  subtitle: profile.location,
-                ),
-                _ProfileRowItem(
-                  icon: Icons.email_outlined,
-                  title: 'Email',
-                  subtitle: profile.email,
-                ),
+                _ProfileRowItem(icon: Icons.person_outline, title: 'Name', subtitle: profile.name),
+                _ProfileRowItem(icon: Icons.badge_outlined, title: 'Role', subtitle: profile.role),
+                _ProfileRowItem(icon: Icons.location_on_outlined, title: 'Location', subtitle: profile.location),
+                _ProfileRowItem(icon: Icons.email_outlined, title: 'Email', subtitle: profile.email),
               ],
             ),
             _ProfileSection(
@@ -194,6 +350,7 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
                       blue: blue,
                       softBlue: softBlue,
                       mutedText: mutedText,
+                      onEditProfile: () => _showEditProfileOptions(profile),
                     ),
                   ),
                 ),
@@ -202,7 +359,10 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
                   _SectionTitle(title: section.title),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: _SectionCard(items: section.items),
+                    child: _SectionCard(
+                      items: section.items,
+                      onItemTap: (title) => _onProfileItemTap(title, profile),
+                    ),
                   ),
                   const SizedBox(height: 12),
                 ],
@@ -249,6 +409,7 @@ class _ProfileCard extends StatelessWidget {
   final Color blue;
   final Color softBlue;
   final Color mutedText;
+  final VoidCallback onEditProfile;
 
   const _ProfileCard({
     required this.profile,
@@ -256,6 +417,7 @@ class _ProfileCard extends StatelessWidget {
     required this.blue,
     required this.softBlue,
     required this.mutedText,
+    required this.onEditProfile,
   });
 
   @override
@@ -340,7 +502,7 @@ class _ProfileCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  onPressed: () {},
+                  onPressed: onEditProfile,
                   child: const Text(
                     'Edit Profile',
                     style: TextStyle(fontWeight: FontWeight.w700),
@@ -444,8 +606,9 @@ class _SectionTitle extends StatelessWidget {
 
 class _SectionCard extends StatelessWidget {
   final List<_ProfileRowItem> items;
+  final void Function(String title) onItemTap;
 
-  const _SectionCard({required this.items});
+  const _SectionCard({required this.items, required this.onItemTap});
 
   @override
   Widget build(BuildContext context) {
@@ -456,7 +619,10 @@ class _SectionCard extends StatelessWidget {
       child: Column(
         children: [
           for (var index = 0; index < items.length; index++) ...[
-            _AnimatedProfileTile(item: items[index]),
+            _AnimatedProfileTile(
+              item: items[index],
+              onTap: () => onItemTap(items[index].title),
+            ),
             if (index != items.length - 1) const Divider(height: 1, indent: 56),
           ],
         ],
@@ -467,14 +633,15 @@ class _SectionCard extends StatelessWidget {
 
 class _AnimatedProfileTile extends StatelessWidget {
   final _ProfileRowItem item;
+  final VoidCallback onTap;
 
-  const _AnimatedProfileTile({required this.item});
+  const _AnimatedProfileTile({required this.item, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       borderRadius: BorderRadius.circular(18),
-      onTap: () {},
+      onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Row(

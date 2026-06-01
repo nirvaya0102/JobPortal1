@@ -88,6 +88,20 @@ class CandidateProfileService {
     return fallbackValue.isEmpty ? fallback : fallbackValue;
   }
 
+  // PROFILE-004: Update skills
+  Future<void> updateSkills(List<String> skills) async {
+    try {
+      await ApiClient.dio.patch(
+        'auth/profile/skills',
+        data: {
+          'skills': skills.join(', '),
+        },
+      );
+    } catch (e) {
+      throw Exception('Failed to update skills: ${e.toString()}');
+    }
+  }
+
   int _asInt(dynamic value) {
     if (value is int) return value;
     return int.tryParse(value?.toString() ?? '') ?? 0;

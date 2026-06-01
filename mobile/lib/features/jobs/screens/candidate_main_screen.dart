@@ -16,7 +16,7 @@ class CandidateMainScreen extends StatefulWidget {
 }
 
 class _CandidateMainScreenState extends State<CandidateMainScreen> {
-  static const int _tabCount = 4;
+  static const int _tabCount = 4;  // Removed notifications tab from footer
   int _currentIndex = 0;
 
   @override
@@ -30,7 +30,7 @@ class _CandidateMainScreenState extends State<CandidateMainScreen> {
       CandidateDashboardScreen(
         onOpenJobs: _openJobsList,
         onOpenApplications: () => _setIndex(2),
-        onOpenProfile: () => _setIndex(3),
+        onOpenProfile: () => _setIndex(3),  // Changed from 4 to 3
       ),
       const CandidateSavedJobsScreen(),
       const CandidateAppliedJobsScreen(),
@@ -74,6 +74,12 @@ class _CandidateMainScreenState extends State<CandidateMainScreen> {
       bottomNavigationBar: CandidateFooter(
         currentIndex: _currentIndex,
         onTap: _setIndex,
+        items: const [
+          CandidateFooterItem(icon: Icons.explore_outlined, label: 'Explore'),
+          CandidateFooterItem(icon: Icons.bookmark_outline, label: 'Saved'),
+          CandidateFooterItem(icon: Icons.check_box_outlined, label: 'Applied'),
+          CandidateFooterItem(icon: Icons.person, label: 'Profile'),
+        ],
       ),
     );
   }

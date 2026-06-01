@@ -1,0 +1,53 @@
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+*.sublime-project
+*.sublime-workspace
+
+# OS specific files
+.DS_Store
+Thumbs.db
+.Spotlight-V100
+.Trashes
+
+# Generated QA and Analysis Files
+QA_*.csv
+QA_*.md
+PROJECT_ANALYSIS.md
+REMEDIATION_PLAN.md
+generate_qa_report.py
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Node dependencies (if any root-level node_modules)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# OS temp files
+*.tmp
+*.temp
+*~
+
+# System files
+.DS_Store
+.AppleDouble
+.LSOverride
+ehthumbs.db

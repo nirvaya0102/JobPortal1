@@ -7,6 +7,7 @@ import { requireRole } from "./middleware/role.middleware";
 import cookieParser from "cookie-parser";
 
 import jobRoutes from "./modules/jobs/jobs.routes";
+import notificationRoutes from "./modules/notifications/notification.routes";
 const app = express();
 
 
@@ -48,5 +49,6 @@ app.get(
 );
 
 app.use("/api/jobs", jobRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 export default app;

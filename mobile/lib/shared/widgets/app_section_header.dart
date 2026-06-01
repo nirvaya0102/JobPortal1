@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'section_title.dart';
+
 class AppSectionHeader extends StatelessWidget {
   final String title;
   final String? actionText;
@@ -14,18 +16,10 @@ class AppSectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          title,
-          style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        if (actionText != null)
-          TextButton(onPressed: onAction, child: Text(actionText!)),
-      ],
+    return SectionTitle(
+      title: title,
+      actionText: actionText,
+      onActionTap: onAction,
     );
   }
 }

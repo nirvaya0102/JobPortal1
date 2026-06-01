@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/api/api_client.dart';
+import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_radii.dart';
+import '../../../core/constants/app_shadows.dart';
+import '../../../core/constants/app_spacing.dart';
 import '../models/application_model.dart';
 
 class CandidateAppliedJobsScreen extends StatefulWidget {
@@ -13,7 +17,7 @@ class CandidateAppliedJobsScreen extends StatefulWidget {
 
 class _CandidateAppliedJobsScreenState
     extends State<CandidateAppliedJobsScreen> {
-  late final Future<List<ApplicationModel>> _applicationsFuture;
+  late Future<List<ApplicationModel>> _applicationsFuture;
 
   @override
   void initState() {
@@ -34,49 +38,262 @@ class _CandidateAppliedJobsScreenState
         .toList();
   }
 
+  Future<void> _refresh() async {
+    setState(() {
+      _applicationsFuture = _loadApplications();
+    });
+    await _applicationsFuture;
+  }
+
+  String _friendlyError(Object _) {
+    return 'Something went wrong. Please try again.';
+  }
+
+  Color _statusColor(String status) {
+    switch (status.toUpperCase()) {
+      case 'PENDING':
+        return Colors.orange;
+      case 'REVIEWED':
+        return Colors.blue;
+      case 'SHORTLISTED':
+        return AppColors.success;
+      case 'REJECTED':
+        return AppColors.danger;
+      default:
+        return AppColors.textSecondary;
+    }
+  }
+
+  Color _statusBg(String status) {
+    final color = _statusColor(status);
+    return color.withValues(alpha: 0.14);
+  }
+
+  String _formatDate(String rawDate) {
+    try {
+      final dt = DateTime.parse(rawDate).toLocal();
+      return '${dt.day}/${dt.month}/${dt.year}';
+    } catch (_) {
+      return 'Date unavailable';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
+      backgroundColor: AppColors.canvasLight,
       appBar: AppBar(title: const Text('Applied Jobs')),
       body: FutureBuilder<List<ApplicationModel>>(
         future: _applicationsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
+            return const _AppliedJobsLoadingState();
           }
 
           if (snapshot.hasError) {
-            return Center(child: Text(snapshot.error.toString()));
-          }
-
-          final applications = snapshot.data ?? const [];
-          if (applications.isEmpty) {
-            return const Center(
+            return Center(
               child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Text('No applications yet.'),
+                padding: const EdgeInsets.all(AppSpacing.xl),
+                child: _StateCard(
+                  icon: Icons.error_outline_rounded,
+                  title: 'Could not load applications',
+                  message: _friendlyError(snapshot.error!),
+                  actionLabel: 'Retry',
+                  onAction: _refresh,
+                ),
               ),
             );
           }
 
-          return ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: applications.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final application = applications[index];
-              return Card(
-                child: ListTile(
-                  leading: const CircleAvatar(child: Icon(Icons.work_outline)),
-                  title: Text(application.candidate.name),
-                  subtitle: Text('Status: ${application.status}'),
-                  trailing: const Icon(Icons.chevron_right),
+          final applications = snapshot.data ?? const [];
+          if (applications.isEmpty) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.xl),
+                child: _StateCard(
+                  icon: Icons.work_outline_rounded,
+                  title: 'No applications yet',
+                  message: 'Apply to jobs to track your hiring progress here.',
+                  actionLabel: 'Refresh',
+                  onAction: _refresh,
                 ),
-              );
-            },
+              ),
+            );
+          }
+
+          return RefreshIndicator(
+            onRefresh: _refresh,
+            child: ListView.separated(
+              physics: const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics(),
+              ),
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              itemCount: applications.length,
+              separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+              itemBuilder: (context, index) {
+                final application = applications[index];
+                final statusColor = _statusColor(application.status);
+
+                return Container(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(AppRadii.lg),
+                    border: Border.all(color: AppColors.borderLight),
+                    boxShadow: AppShadows.soft(),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const CircleAvatar(
+                            radius: 22,
+                            backgroundColor: Color(0xFFEAF0FF),
+                            child: Icon(Icons.work_outline, color: AppColors.primaryBlue),
+                          ),
+                          const SizedBox(width: AppSpacing.md),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Application #${application.id.substring(0, application.id.length > 8 ? 8 : application.id.length)}',
+                                  style: theme.textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: AppSpacing.xs),
+                                Text(
+                                  application.candidate.email,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.sm,
+                              vertical: AppSpacing.xs,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _statusBg(application.status),
+                              borderRadius: BorderRadius.circular(AppRadii.pill),
+                            ),
+                            child: Text(
+                              application.status,
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: statusColor,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      Text(
+                        'Applied on ${_formatDate(application.appliedAt)}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      if ((application.coverLetter ?? '').trim().isNotEmpty) ...[
+                        const SizedBox(height: AppSpacing.sm),
+                        Text(
+                          application.coverLetter!,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              },
+            ),
           );
         },
       ),
+    );
+  }
+}
+
+class _StateCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String message;
+  final String actionLabel;
+  final VoidCallback onAction;
+
+  const _StateCard({
+    required this.icon,
+    required this.title,
+    required this.message,
+    required this.actionLabel,
+    required this.onAction,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(color: AppColors.borderLight),
+        boxShadow: AppShadows.soft(),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 32, color: AppColors.primaryBlue),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          OutlinedButton(onPressed: onAction, child: Text(actionLabel)),
+        ],
+      ),
+    );
+  }
+}
+
+class _AppliedJobsLoadingState extends StatelessWidget {
+  const _AppliedJobsLoadingState();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      itemBuilder: (_, __) => Container(
+        height: 110,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(AppRadii.lg),
+          border: Border.all(color: AppColors.borderLight),
+        ),
+      ),
+      separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+      itemCount: 4,
     );
   }
 }

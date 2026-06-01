@@ -1,6 +1,7 @@
 import prisma from "../../lib/prisma";
 import { ApplicationStatus } from "@prisma/client";
 import { AppError } from "../../utils/AppError";
+import { sendPushNotification } from "../../utils/firebase";
 
 export const createJobService = async (data: any, userId: string) => {
     const {
@@ -140,6 +141,7 @@ export const applyToJobService = async (
 ) => {
     const job = await prisma.job.findUnique({
         where: { id: jobId },
+        include: { createdBy: true }
     });
 
     if (!job) {
@@ -172,7 +174,27 @@ export const applyToJobService = async (
   },
 });
 
+  const candidate = await prisma.user.findUnique({ where: { id: userId } });
 
+  // Notify Employer
+  if (job.createdBy?.fcmToken) {
+    sendPushNotification(
+      job.createdBy.fcmToken,
+      "New Applicant!",
+      `${candidate?.name || 'Someone'} applied for your job: ${job.title}`,
+      { type: "new_applicant", jobId }
+    );
+  }
+
+  // Notify Candidate
+  if (candidate?.fcmToken) {
+    sendPushNotification(
+      candidate.fcmToken,
+      "Application Submitted",
+      `You successfully applied for ${job.title}`,
+      { type: "application_submitted", jobId }
+    );
+  }
 
     return application;
 };
@@ -237,6 +259,7 @@ export const updateApplicationStatusService = async (
           id: true,
           name: true,
           email: true,
+          fcmToken: true,
         },
       },
       job: {
@@ -247,6 +270,15 @@ export const updateApplicationStatusService = async (
       },
     },
   });
+
+  if (updatedApplication.candidate?.fcmToken) {
+    sendPushNotification(
+      updatedApplication.candidate.fcmToken,
+      "Application Status Updated",
+      `Your application for ${updatedApplication.job.title} was marked as ${status}.`,
+      { type: "status_updated", applicationId: updatedApplication.id }
+    );
+  }
 
   return updatedApplication;
 };

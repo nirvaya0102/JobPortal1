@@ -24,6 +24,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool showPassword = false;
   String? errorMessage;
   bool isCandidate = true; // Cosmetic toggle for login
+  bool rememberMe = false; // Remember me functionality
 
   Future<void> handleLogin() async {
     final email = emailController.text.trim();
@@ -31,6 +32,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (email.isEmpty || password.isEmpty) {
       setState(() => errorMessage = 'Please enter email and password.');
+      return;
+    }
+
+    // AUTH-004: Password validation - min 8 characters
+    if (password.length < 8) {
+      setState(() => errorMessage = 'Password must be at least 8 characters long.');
       return;
     }
 
@@ -63,6 +70,13 @@ class _LoginScreenState extends State<LoginScreen> {
           email: (user['email'] ?? email).toString(),
         );
 
+        // AUTH-006: Remember me - save email for next login
+        if (rememberMe) {
+          await UserStorage.saveRememberMeEmail(email);
+        } else {
+          await UserStorage.clearRememberMeEmail();
+        }
+
         if (!mounted) return;
         Navigator.pushReplacement(
           context,
@@ -79,6 +93,13 @@ class _LoginScreenState extends State<LoginScreen> {
           email: (user['email'] ?? email).toString(),
         );
 
+        // AUTH-006: Remember me - save email for next login
+        if (rememberMe) {
+          await UserStorage.saveRememberMeEmail(email);
+        } else {
+          await UserStorage.clearRememberMeEmail();
+        }
+
         if (!mounted) return;
         Navigator.pushReplacement(
           context,
@@ -93,6 +114,23 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         setState(() => loading = false);
       }
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // AUTH-006: Load remembered email on init
+    _loadRememberedEmail();
+  }
+
+  Future<void> _loadRememberedEmail() async {
+    final savedEmail = await UserStorage.getRememberMeEmail();
+    if (savedEmail != null && mounted) {
+      setState(() {
+        emailController.text = savedEmail;
+        rememberMe = true;
+      });
     }
   }
 
@@ -211,6 +249,27 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                       ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // AUTH-006: Remember me checkbox
+                    Row(
+                      children: [
+                        Checkbox(
+                          value: rememberMe,
+                          onChanged: (value) {
+                            setState(() => rememberMe = value ?? false);
+                          },
+                          activeColor: primaryBlue,
+                        ),
+                        const Text(
+                          'Remember me',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF6B7280),
+                          ),
+                        ),
+                      ],
                     ),
 
                     if (errorMessage != null) ...[
