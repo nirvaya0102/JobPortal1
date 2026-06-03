@@ -111,8 +111,7 @@ class JobService {
 
     final data = jsonDecode(response.body);
 
-    print('CREATE JOB STATUS: ${response.statusCode}');
-    print('CREATE JOB BODY: $data');
+    // Job creation request completed
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       return;

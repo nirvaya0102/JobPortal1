@@ -43,7 +43,7 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
       });
       return;
     }
-    print('CREATE JOB TOKEN: ${widget.token}');
+    // Job creation token initialized
 
     if (salaryMinText.isEmpty || salaryMaxText.isEmpty) {
       setState(() {
@@ -256,7 +256,7 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 18,
               offset: const Offset(0, -4),
             ),
@@ -325,7 +325,7 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 18,
             offset: const Offset(0, 8),
           ),

@@ -6,6 +6,7 @@ import '../../../core/constants/app_radii.dart';
 import '../../../core/constants/app_shadows.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../models/application_model.dart';
+import 'job_detail_screen.dart';
 
 class CandidateAppliedJobsScreen extends StatefulWidget {
   const CandidateAppliedJobsScreen({super.key});
@@ -45,8 +46,8 @@ class _CandidateAppliedJobsScreenState
     await _applicationsFuture;
   }
 
-  String _friendlyError(Object _) {
-    return 'Something went wrong. Please try again.';
+  String _friendlyError(Object error) {
+    return error.toString();
   }
 
   Color _statusColor(String status) {
@@ -131,90 +132,147 @@ class _CandidateAppliedJobsScreenState
               ),
               padding: const EdgeInsets.all(AppSpacing.lg),
               itemCount: applications.length,
-              separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+              separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
               itemBuilder: (context, index) {
                 final application = applications[index];
                 final statusColor = _statusColor(application.status);
+                final job = application.job;
 
-                return Container(
-                  padding: const EdgeInsets.all(AppSpacing.lg),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
+                final jobTitle = job?.title ?? 'Application #${application.id.substring(0, application.id.length > 8 ? 8 : application.id.length)}';
+                final companyName = job?.companyName ?? 'Confidential Company';
+                final companyLogo = job?.companyLogo;
+                final jobLocation = job?.location ?? 'Remote / Flexible';
+
+                return Material(
+                  color: Colors.transparent,
+                  child: InkWell(
                     borderRadius: BorderRadius.circular(AppRadii.lg),
-                    border: Border.all(color: AppColors.borderLight),
-                    boxShadow: AppShadows.soft(),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+                    onTap: job == null
+                        ? null
+                        : () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => JobDetailScreen(
+                                  jobId: job.id,
+                                  currentIndex: 2,
+                                ),
+                              ),
+                            );
+                          },
+                    child: Ink(
+                      padding: const EdgeInsets.all(AppSpacing.lg),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(AppRadii.lg),
+                        border: Border.all(color: AppColors.borderLight),
+                        boxShadow: AppShadows.soft(),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const CircleAvatar(
-                            radius: 22,
-                            backgroundColor: Color(0xFFEAF0FF),
-                            child: Icon(Icons.work_outline, color: AppColors.primaryBlue),
-                          ),
-                          const SizedBox(width: AppSpacing.md),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Application #${application.id.substring(0, application.id.length > 8 ? 8 : application.id.length)}',
-                                  style: theme.textTheme.titleSmall?.copyWith(
+                          Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 22,
+                                backgroundColor: const Color(0xFFEAF0FF),
+                                backgroundImage: companyLogo != null && companyLogo.trim().isNotEmpty
+                                    ? NetworkImage(companyLogo)
+                                    : null,
+                                child: companyLogo == null || companyLogo.trim().isEmpty
+                                    ? const Icon(Icons.business, color: AppColors.primaryBlue)
+                                    : null,
+                              ),
+                              const SizedBox(width: AppSpacing.md),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      jobTitle,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: theme.textTheme.titleSmall?.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: AppSpacing.xs),
+                                    Text(
+                                      companyName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: AppSpacing.xs),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.sm,
+                                  vertical: AppSpacing.xs,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _statusBg(application.status),
+                                  borderRadius: BorderRadius.circular(AppRadii.pill),
+                                ),
+                                child: Text(
+                                  application.status,
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: statusColor,
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
-                                const SizedBox(height: AppSpacing.xs),
-                                Text(
-                                  application.candidate.email,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.bodySmall?.copyWith(
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.location_on_outlined,
+                                    size: 14,
                                     color: AppColors.textSecondary,
                                   ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    jobLocation,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Text(
+                                'Applied: ${_formatDate(application.appliedAt)}',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: AppColors.textSecondary,
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.sm,
-                              vertical: AppSpacing.xs,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _statusBg(application.status),
-                              borderRadius: BorderRadius.circular(AppRadii.pill),
-                            ),
-                            child: Text(
-                              application.status,
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: statusColor,
-                                fontWeight: FontWeight.w700,
+                          if ((application.coverLetter ?? '').trim().isNotEmpty) ...[
+                            const SizedBox(height: AppSpacing.sm),
+                            const Divider(color: AppColors.borderLight, height: 1),
+                            const SizedBox(height: AppSpacing.sm),
+                            Text(
+                              application.coverLetter!,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: AppColors.textSecondary,
+                                fontStyle: FontStyle.italic,
                               ),
                             ),
-                          ),
+                          ],
                         ],
                       ),
-                      const SizedBox(height: AppSpacing.md),
-                      Text(
-                        'Applied on ${_formatDate(application.appliedAt)}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      if ((application.coverLetter ?? '').trim().isNotEmpty) ...[
-                        const SizedBox(height: AppSpacing.sm),
-                        Text(
-                          application.coverLetter!,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ],
+                    ),
                   ),
                 );
               },
@@ -284,7 +342,7 @@ class _AppliedJobsLoadingState extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView.separated(
       padding: const EdgeInsets.all(AppSpacing.lg),
-      itemBuilder: (_, __) => Container(
+      itemBuilder: (_, _) => Container(
         height: 110,
         decoration: BoxDecoration(
           color: Colors.white,
@@ -292,7 +350,7 @@ class _AppliedJobsLoadingState extends StatelessWidget {
           border: Border.all(color: AppColors.borderLight),
         ),
       ),
-      separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+      separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
       itemCount: 4,
     );
   }

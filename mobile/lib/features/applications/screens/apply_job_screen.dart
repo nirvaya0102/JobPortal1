@@ -51,8 +51,9 @@ class _ApplyJobScreenState extends State<ApplyJobScreen> {
       });
     } catch (_) {
       // Keep screen usable even if header data fails.
-    } finally {
-      if (!mounted) return;
+    }
+    
+    if (mounted) {
       setState(() {
         loadingJob = false;
       });

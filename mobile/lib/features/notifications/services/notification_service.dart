@@ -24,7 +24,6 @@ class NotificationService {
 
       return const <NotificationModel>[];
     } catch (e) {
-      print('Error fetching notifications: $e');
       throw Exception('Failed to fetch notifications');
     }
   }
@@ -35,7 +34,6 @@ class NotificationService {
           .put('notifications/$id/read')
           .timeout(const Duration(seconds: 15));
     } catch (e) {
-      print('Error marking notification as read: $e');
       throw Exception('Failed to mark notification as read');
     }
   }
@@ -46,7 +44,7 @@ class NotificationService {
           .post('notifications/demo')
           .timeout(const Duration(seconds: 15));
     } catch (e) {
-      print('Error generating demo notifications: $e');
+      // Demo notification generation failed
     }
   }
 }

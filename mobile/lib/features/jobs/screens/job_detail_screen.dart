@@ -60,8 +60,9 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
       setState(() {
         errorMessage = 'Something went wrong. Please try again.';
       });
-    } finally {
-      if (!mounted) return;
+    }
+    
+    if (mounted) {
       setState(() {
         loading = false;
       });

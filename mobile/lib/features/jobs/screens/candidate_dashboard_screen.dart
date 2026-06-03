@@ -86,8 +86,9 @@ class _CandidateDashboardScreenState extends State<CandidateDashboardScreen> {
             ? e.toString().replaceAll('Exception: ', '')
             : 'Failed to load jobs. Please try again.';
       });
-    } finally {
-      if (!mounted) return;
+    }
+    
+    if (mounted) {
       setState(() {
         loading = false;
       });

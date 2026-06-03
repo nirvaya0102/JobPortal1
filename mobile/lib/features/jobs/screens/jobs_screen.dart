@@ -168,17 +168,22 @@ class _JobsScreenState extends State<JobsScreen> {
               limit: limit,
             );
 
+      if (!mounted) return;
+
       setState(() {
         page = nextPage;
         jobs.addAll(result);
         hasMore = result.length == limit;
       });
     } catch (e) {
+      if (!mounted) return;
       // Show error but don't block the list
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(_getErrorMessage(e.toString()))),
       );
-    } finally {
+    }
+    
+    if (mounted) {
       setState(() {
         loadingMore = false;
       });
@@ -334,7 +339,7 @@ class _JobsScreenState extends State<JobsScreen> {
                         icon: Icons.work_outline_rounded,
                         title: searchQuery.isEmpty
                             ? 'No jobs available right now'
-                            : 'No jobs found for \"$searchQuery\"',
+                            : 'No jobs found for "$searchQuery"',
                         message: searchQuery.isEmpty
                             ? 'Check back later for new opportunities.'
                             : 'Try different keywords or browse all jobs.',

@@ -22,15 +22,9 @@ class ApiClient {
       InterceptorsWrapper(
         onRequest: (options, handler) async {
           final accessToken = await TokenStorage.getAccessToken();
-          print('--- DIO REQUEST INTERCEPTOR ---');
-          print('Path: ${options.path}');
-          print('Token from storage: $accessToken');
 
           if (accessToken != null && accessToken.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $accessToken';
-            print('Added Authorization header');
-          } else {
-            print('NO TOKEN FOUND IN STORAGE');
           }
 
           return handler.next(options);

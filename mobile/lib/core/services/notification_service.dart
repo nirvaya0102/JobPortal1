@@ -7,7 +7,6 @@ import '../../firebase_options.dart';
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  print("Handling a background message: ${message.messageId}");
 }
 
 class NotificationService {
@@ -43,7 +42,7 @@ class NotificationService {
     );
 
     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      print('User granted notification permission');
+      // Notification permission granted
     }
 
     // Initialize local notifications for foreground display
@@ -143,11 +142,10 @@ class NotificationService {
 
   static Future<void> _registerToken(String? token) async {
     if (token != null) {
-      print('FCM Token: $token');
       try {
         await _authService.updateFcmToken(token);
       } catch (e) {
-        print('Failed to register FCM token with backend: $e');
+        // FCM token registration failed
       }
     }
   }

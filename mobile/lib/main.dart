@@ -16,7 +16,7 @@ void main() async {
     );
     await NotificationService.initialize();
   } catch (e) {
-    print('Firebase initialization failed. Please run flutterfire configure: $e');
+    // Firebase initialization failed
   }
 
   ApiClient.setupInterceptors();

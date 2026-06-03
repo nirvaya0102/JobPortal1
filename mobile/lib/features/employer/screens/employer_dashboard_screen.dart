@@ -266,7 +266,7 @@ class _EmployerDashboardScreenState extends State<EmployerDashboardScreen> {
                               ? const SliverToBoxAdapter(child: _EmptyJobsCard())
                               : SliverList.separated(
                                   itemCount: jobs.length > 4 ? 4 : jobs.length,
-                                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                                  separatorBuilder: (_, _) => const SizedBox(height: 12),
                                   itemBuilder: (context, index) {
                                     final job = jobs[index];
                                     final location = (job.location?.isNotEmpty ?? false)

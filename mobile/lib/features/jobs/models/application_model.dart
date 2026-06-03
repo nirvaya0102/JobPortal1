@@ -1,3 +1,5 @@
+import 'job_model.dart';
+
 class ApplicationModel {
   final String id;
   final String jobId;
@@ -7,6 +9,7 @@ class ApplicationModel {
   final String appliedAt;
   final CandidateModel candidate;
   final String? resumeFileName;
+  final JobModel? job;
 
   ApplicationModel({
     required this.id,
@@ -17,6 +20,7 @@ class ApplicationModel {
     required this.appliedAt,
     required this.candidate,
     this.resumeFileName,
+    this.job,
   });
 
   factory ApplicationModel.fromJson(Map<String, dynamic> json) {
@@ -29,6 +33,7 @@ class ApplicationModel {
       appliedAt: json['appliedAt'] ?? '',
       resumeFileName: json['resumeFileName'],
       candidate: CandidateModel.fromJson(json['candidate'] ?? {}),
+      job: json['job'] != null ? JobModel.fromJson(Map<String, dynamic>.from(json['job'])) : null,
     );
   }
 }

@@ -45,7 +45,7 @@ class AppTextField extends StatelessWidget {
                 fontWeight: FontWeight.w700,
               ),
             ),
-            if (topTrailing != null) topTrailing!,
+            ?topTrailing,
           ],
         ),
         const SizedBox(height: AppSpacing.sm),

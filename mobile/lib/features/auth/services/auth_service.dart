@@ -14,8 +14,7 @@ class AuthService {
       );
 
       final data = response.data;
-      print('LOGIN STATUS: ${response.statusCode}');
-      print('LOGIN RESPONSE: $data');
+      // Login request completed
 
       final responseData = data['data'] ?? data;
       final token = responseData['token'] ?? responseData['accessToken'];
@@ -69,7 +68,7 @@ class AuthService {
         await ApiClient.dio.patch('auth/fcm-token', data: {'fcmToken': token});
       }
     } catch (e) {
-      print('Could not sync FCM token: $e');
+      // FCM token sync failed
     }
   }
 }
