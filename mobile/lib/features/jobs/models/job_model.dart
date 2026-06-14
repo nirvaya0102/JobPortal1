@@ -3,45 +3,88 @@ class JobModel {
   final String title;
   final String? companyName;
   final String? companyLogo;
+  final String? companyDescription;
+  final String? companyLocation;
+  final String? companyWebsite;
   final String? location;
   final String? salary;
   final String? type;
   final String? description;
-   final String status;
-    final int applicantsCount;
+  final String status;
+  final int applicantsCount;
+  final int? salaryMin;
+  final int? salaryMax;
+  final String? createdAt;
 
   JobModel({
     required this.id,
     required this.title,
     this.companyName,
     this.companyLogo,
+    this.companyDescription,
+    this.companyLocation,
+    this.companyWebsite,
     this.location,
     this.salary,
     this.type,
     this.description,
-     required this.status,
-        required this.applicantsCount,
+    required this.status,
+    required this.applicantsCount,
+    this.salaryMin,
+    this.salaryMax,
+    this.createdAt,
   });
 
   factory JobModel.fromJson(Map<String, dynamic> json) {
     int parsedApplicantsCount = 0;
+
     if (json['applicantsCount'] != null) {
-      parsedApplicantsCount = int.tryParse(json['applicantsCount'].toString()) ?? 0;
-    } else if (json['_count'] != null && json['_count']['applications'] != null) {
-      parsedApplicantsCount = int.tryParse(json['_count']['applications'].toString()) ?? 0;
+      parsedApplicantsCount =
+          int.tryParse(json['applicantsCount'].toString()) ?? 0;
+    } else if (json['_count'] != null &&
+        json['_count']['applications'] != null) {
+      parsedApplicantsCount =
+          int.tryParse(json['_count']['applications'].toString()) ?? 0;
     }
+
+    final salaryMin = int.tryParse(json['salaryMin']?.toString() ?? '');
+    final salaryMax = int.tryParse(json['salaryMax']?.toString() ?? '');
+
+    String? salaryText;
+    if (salaryMin != null && salaryMax != null) {
+      salaryText = 'Rs $salaryMin - Rs $salaryMax';
+    } else if (salaryMin != null) {
+      salaryText = 'From Rs $salaryMin';
+    } else if (salaryMax != null) {
+      salaryText = 'Up to Rs $salaryMax';
+    } else {
+      salaryText = json['salary']?.toString() ?? 'Negotiable';
+    }
+
+    final company = json['company'];
 
     return JobModel(
       id: json['id']?.toString() ?? '',
       title: json['title']?.toString() ?? 'Untitled Job',
-      companyName: (json['company'] is Map ? json['company']['name'] : null)?.toString() ?? json['companyName']?.toString(),
-      companyLogo: (json['company'] is Map ? json['company']['logo'] : null)?.toString() ?? json['companyLogo']?.toString(),
+      companyName: company is Map
+          ? company['name']?.toString()
+          : json['companyName']?.toString(),
+      companyLogo: company is Map
+          ? company['logo']?.toString()
+          : json['companyLogo']?.toString(),
+      companyDescription:
+          company is Map ? company['description']?.toString() : null,
+      companyLocation: company is Map ? company['location']?.toString() : null,
+      companyWebsite: company is Map ? company['website']?.toString() : null,
       location: json['location']?.toString(),
-      salary: json['salary']?.toString(),
+      salary: salaryText,
       type: (json['type'] ?? json['jobType'])?.toString(),
       description: json['description']?.toString(),
       status: json['status']?.toString() ?? '',
       applicantsCount: parsedApplicantsCount,
+      salaryMin: salaryMin,
+      salaryMax: salaryMax,
+      createdAt: json['createdAt']?.toString(),
     );
   }
 }

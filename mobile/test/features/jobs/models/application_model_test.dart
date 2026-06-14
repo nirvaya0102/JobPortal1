@@ -47,6 +47,7 @@ void main() {
         final candidate = CandidateModel(
           id: '1',
           name: 'John Doe',
+          phone: '9846983690',
           email: 'john@example.com',
         );
 
@@ -172,6 +173,7 @@ void main() {
           id: 'cand1',
           name: 'John Doe',
           email: 'john@example.com',
+          phone: '9846983690',
         );
 
         final app = ApplicationModel(

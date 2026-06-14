@@ -35,12 +35,6 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    // AUTH-004: Password validation - min 8 characters
-    if (password.length < 8) {
-      setState(() => errorMessage = 'Password must be at least 8 characters long.');
-      return;
-    }
-
     try {
       setState(() {
         loading = true;
@@ -68,6 +62,7 @@ class _LoginScreenState extends State<LoginScreen> {
           role: (user['role'] ?? '').toString(),
           location: (user['companyLocation'] ?? '').toString(),
           email: (user['email'] ?? email).toString(),
+          phone: (user['phone'] ?? '').toString(),
         );
 
         // AUTH-006: Remember me - save email for next login
@@ -91,6 +86,7 @@ class _LoginScreenState extends State<LoginScreen> {
           role: (user['role'] ?? '').toString(),
           location: (user['location'] ?? '').toString(),
           email: (user['email'] ?? email).toString(),
+          phone: (user['phone'] ?? '').toString(),
         );
 
         // AUTH-006: Remember me - save email for next login

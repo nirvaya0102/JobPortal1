@@ -29,7 +29,7 @@ class AuthService {
 
       return data;
     } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? 'Login failed');
+      throw Exception(_getErrorMessage(e));
     }
   }
 
@@ -38,6 +38,7 @@ class AuthService {
     required String email,
     required String password,
     required String role,
+    String? phone,
     String? companyName,
     String? companyLocation,
   }) async {
@@ -46,6 +47,7 @@ class AuthService {
       data: {
         'name': name,
         'email': email,
+        'phone': phone,
         'password': password,
         'role': role,
         'companyName': companyName,
@@ -70,5 +72,37 @@ class AuthService {
     } catch (e) {
       // FCM token sync failed
     }
+  }
+
+  String _getErrorMessage(DioException error) {
+    if (error.type == DioExceptionType.connectionTimeout ||
+        error.type == DioExceptionType.receiveTimeout ||
+        error.type == DioExceptionType.sendTimeout) {
+      return 'Request timed out. Please try again.';
+    }
+
+    if (error.type == DioExceptionType.connectionError) {
+      return 'Unable to reach the server. Check your internet or API URL.';
+    }
+
+    final responseData = error.response?.data;
+    if (responseData is Map<String, dynamic>) {
+      final message = responseData['message'];
+      if (message is String && message.trim().isNotEmpty) {
+        final errors = responseData['errors'];
+        if (errors is List && errors.isNotEmpty) {
+          final firstError = errors.first;
+          if (firstError is Map<String, dynamic>) {
+            final fieldMessage = firstError['message'];
+            if (fieldMessage is String && fieldMessage.trim().isNotEmpty) {
+              return fieldMessage;
+            }
+          }
+        }
+        return message;
+      }
+    }
+
+    return 'Login failed. Please try again.';
   }
 }

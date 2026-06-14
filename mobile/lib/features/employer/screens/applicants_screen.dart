@@ -72,6 +72,8 @@ class _ApplicantsScreenState extends State<ApplicantsScreen> {
             id: oldApp.id,
             jobId: oldApp.jobId,
             candidateId: oldApp.candidateId,
+            applicantEmail: oldApp.applicantEmail,
+            applicantPhone: oldApp.applicantPhone,
             coverLetter: oldApp.coverLetter,
             status: newStatus,
             appliedAt: oldApp.appliedAt,
@@ -347,11 +349,24 @@ class _ApplicantSection extends StatelessWidget {
                     ),
                     const SizedBox(height: AppSpacing.xs),
                     Text(
-                      app.candidate.email,
+                      app.applicantEmail?.trim().isNotEmpty == true
+                          ? app.applicantEmail!
+                          : app.candidate.email,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: AppColors.textSecondary,
                       ),
                     ),
+                    if ((app.applicantPhone ?? app.candidate.phone).trim().isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        app.applicantPhone?.trim().isNotEmpty == true
+                            ? app.applicantPhone!
+                            : app.candidate.phone,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: AppSpacing.xs),
                     Text(
                       'Applied on ${formatDate(app.appliedAt)}',

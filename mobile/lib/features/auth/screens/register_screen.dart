@@ -14,6 +14,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   final nameController = TextEditingController();
   final emailController = TextEditingController();
+  final phoneController = TextEditingController();
   final passwordController = TextEditingController();
   final confirmPasswordController = TextEditingController();
 
@@ -30,6 +31,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> handleRegister() async {
     final name = nameController.text.trim();
     final email = emailController.text.trim();
+    final phone = phoneController.text.trim();
     final password = passwordController.text.trim();
     final confirmPassword = confirmPasswordController.text.trim();
 
@@ -48,9 +50,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
       }
     }
 
-    if (name.isEmpty || email.isEmpty || password.isEmpty) {
+    if (name.isEmpty || email.isEmpty || phone.isEmpty || password.isEmpty) {
       setState(() {
         errorMessage = 'All fields are required.';
+      });
+      return;
+    }
+
+    if (phone.length < 7) {
+      setState(() {
+        errorMessage = 'Please enter a valid phone number.';
       });
       return;
     }
@@ -92,6 +101,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       await authService.register(
         name: name,
         email: email,
+        phone: phone,
         password: password,
         role: role,
         companyName: role == 'EMPLOYER' ? companyName : null,
@@ -129,10 +139,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void dispose() {
     nameController.dispose();
     emailController.dispose();
+    phoneController.dispose();
     passwordController.dispose();
     confirmPasswordController.dispose();
-companyNameController.dispose();
-companyLocationController.dispose();
+    companyNameController.dispose();
+    companyLocationController.dispose();
     super.dispose();
   }
 
@@ -185,6 +196,17 @@ companyLocationController.dispose();
                 keyboardType: TextInputType.emailAddress,
                 decoration: const InputDecoration(
                   labelText: 'Email',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              TextField(
+                controller: phoneController,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(
+                  labelText: 'Phone Number',
                   border: OutlineInputBorder(),
                 ),
               ),

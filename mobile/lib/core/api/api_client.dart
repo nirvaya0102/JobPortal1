@@ -1,11 +1,12 @@
 import 'package:dio/dio.dart';
 import 'dart:async';
+import '../config/app_config.dart';
 import '../storage/token_storage.dart';
 
 class ApiClient {
   static final Dio dio = Dio(
     BaseOptions(
-      baseUrl: 'http://10.0.2.2:5000/api/',
+      baseUrl: AppConfig.apiBaseUrl,
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 10),
       headers: {'Content-Type': 'application/json', 'x-client-type': 'mobile'},

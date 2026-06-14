@@ -7,6 +7,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_radii.dart';
 import '../../../core/constants/app_shadows.dart';
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/storage/user_storage.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/candidate_footer.dart';
 import '../../jobs/models/job_model.dart';
@@ -18,7 +19,11 @@ class ApplyJobScreen extends StatefulWidget {
   final String jobId;
   final int currentIndex;
 
-  const ApplyJobScreen({super.key, required this.jobId, this.currentIndex = 0});
+  const ApplyJobScreen({
+    super.key,
+    required this.jobId,
+    this.currentIndex = 0,
+  });
 
   @override
   State<ApplyJobScreen> createState() => _ApplyJobScreenState();
@@ -27,10 +32,14 @@ class ApplyJobScreen extends StatefulWidget {
 class _ApplyJobScreenState extends State<ApplyJobScreen> {
   final ApplicationService applicationService = ApplicationService();
   final JobService _jobService = JobService();
+
   final TextEditingController coverLetterController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
 
   File? selectedResume;
   JobModel? job;
+
   bool loading = false;
   bool loadingJob = true;
   double uploadProgress = 0;
@@ -39,20 +48,34 @@ class _ApplyJobScreenState extends State<ApplyJobScreen> {
   @override
   void initState() {
     super.initState();
+    _loadContactInfo();
     _loadJob();
+  }
+
+  Future<void> _loadContactInfo() async {
+    final storedEmail = await UserStorage.getEmail();
+    final storedPhone = await UserStorage.getPhone();
+
+    if (!mounted) return;
+
+    setState(() {
+      emailController.text = storedEmail?.trim() ?? '';
+      phoneController.text = storedPhone?.trim() ?? '';
+    });
   }
 
   Future<void> _loadJob() async {
     try {
       final result = await _jobService.getJobById(widget.jobId);
       if (!mounted) return;
+
       setState(() {
         job = result;
       });
     } catch (_) {
-      // Keep screen usable even if header data fails.
+      // Keep screen usable even if job header fails.
     }
-    
+
     if (mounted) {
       setState(() {
         loadingJob = false;
@@ -92,6 +115,25 @@ class _ApplyJobScreenState extends State<ApplyJobScreen> {
       return;
     }
 
+    final email = emailController.text.trim();
+    final phone = phoneController.text.trim();
+
+    final emailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
+
+    if (!emailRegex.hasMatch(email)) {
+      setState(() {
+        errorMessage = 'Please enter a valid email address.';
+      });
+      return;
+    }
+
+    if (phone.length < 7) {
+      setState(() {
+        errorMessage = 'Please enter a valid phone number.';
+      });
+      return;
+    }
+
     try {
       setState(() {
         loading = true;
@@ -102,9 +144,11 @@ class _ApplyJobScreenState extends State<ApplyJobScreen> {
       await applicationService.applyToJob(
         jobId: widget.jobId,
         resumeFile: selectedResume!,
+        email: email,
+        phone: phone,
         coverLetter: coverLetterController.text.trim(),
         onProgress: (sent, total) {
-          if (total > 0) {
+          if (total > 0 && mounted) {
             setState(() {
               uploadProgress = sent / total;
             });
@@ -112,53 +156,55 @@ class _ApplyJobScreenState extends State<ApplyJobScreen> {
         },
       );
 
+      await UserStorage.savePhone(phone);
+
       if (!mounted) return;
 
-      // JOB-DET-006: Show success dialog with clear action
       showDialog(
         context: context,
         barrierDismissible: false,
         builder: (context) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Application Submitted!'),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text('Application Submitted'),
           content: const Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.check_circle, color: Colors.green, size: 48),
+              Icon(Icons.check_circle_rounded, color: Colors.green, size: 56),
               SizedBox(height: 16),
               Text(
-                'Your application has been submitted successfully.',
+                'Your application has been sent successfully.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14),
               ),
               SizedBox(height: 8),
               Text(
-                'The hiring team will review your application and contact you soon.',
+                'The hiring team will review your profile and contact you soon.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
             ],
           ),
           actions: [
-            ElevatedButton(
+            TextButton(
               onPressed: () {
-                Navigator.pop(context);  // Close dialog
-                Navigator.pop(context);  // Go back to job detail
+                Navigator.pop(context);
+                Navigator.pop(context);
               },
               child: const Text('Back to Job'),
             ),
-            TextButton(
+            ElevatedButton(
               onPressed: () {
-                Navigator.pop(context);  // Close dialog
+                Navigator.pop(context);
                 Navigator.pushAndRemoveUntil(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => CandidateMainScreen(initialIndex: 2),  // Go to applied jobs
+                    builder: (_) => CandidateMainScreen(initialIndex: 2),
                   ),
                   (route) => false,
                 );
               },
-              child: const Text('View My Applications'),
+              child: const Text('View Applications'),
             ),
           ],
         ),
@@ -184,12 +230,6 @@ class _ApplyJobScreenState extends State<ApplyJobScreen> {
     );
   }
 
-  @override
-  void dispose() {
-    coverLetterController.dispose();
-    super.dispose();
-  }
-
   void _goToTab(int index) {
     Navigator.pushAndRemoveUntil(
       context,
@@ -201,219 +241,139 @@ class _ApplyJobScreenState extends State<ApplyJobScreen> {
   }
 
   @override
+  void dispose() {
+    coverLetterController.dispose();
+    emailController.dispose();
+    phoneController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final screenWidth = MediaQuery.sizeOf(context).width;
-    final horizontalPadding = screenWidth < 360 ? AppSpacing.md : 14.0;
+    final horizontalPadding = screenWidth < 360 ? 14.0 : 18.0;
     final fileName = selectedResume?.path.split(RegExp(r'[/\\]')).last;
+
     final company = (job?.companyName ?? 'Company').trim();
     final title = (job?.title ?? 'Job Position').trim();
     final location = (job?.location ?? 'Kathmandu, Nepal').trim();
     final type = (job?.type ?? 'Full-time').trim();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F4F8),
+      backgroundColor: const Color(0xFFF6F7FB),
       appBar: AppBar(
-        title: const Text('Rojgar Kendra'),
+        elevation: 0,
+        title: const Text('Apply Job'),
         centerTitle: true,
-        backgroundColor: const Color(0xFFF5F4F8),
+        backgroundColor: const Color(0xFFF6F7FB),
         surfaceTintColor: Colors.transparent,
         foregroundColor: AppColors.primary,
       ),
       body: loadingJob
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(horizontalPadding, 8, horizontalPadding, 160),
+              padding: EdgeInsets.fromLTRB(
+                horizontalPadding,
+                10,
+                horizontalPadding,
+                180,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(AppSpacing.lg),
-                    decoration: BoxDecoration(
-                      color: AppColors.canvasLight,
-                      borderRadius: BorderRadius.circular(14),
+                  _HeroJobCard(
+                    title: title,
+                    company: company,
+                    location: location,
+                    type: type,
+                  ),
+                  const SizedBox(height: 18),
+
+                  _SectionCard(
+                    icon: Icons.upload_file_rounded,
+                    title: 'Resume / CV',
+                    subtitle: 'PDF, DOC, or DOCX under 5MB',
+                    child: _UploadBox(
+                      fileName: fileName,
+                      isDisabled: loading,
+                      onTap: pickResume,
                     ),
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  _SectionCard(
+                    icon: Icons.person_outline_rounded,
+                    title: 'Contact Information',
+                    subtitle: 'Recruiters will contact you using this information',
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.borderLight),
-                          ),
-                          child: const Icon(Icons.work_outline_rounded, color: AppColors.primary),
+                        _AppTextField(
+                          controller: emailController,
+                          label: 'Email address',
+                          icon: Icons.email_outlined,
+                          keyboardType: TextInputType.emailAddress,
                         ),
-                        const SizedBox(height: AppSpacing.md),
-                        Text(
-                          title,
-                          style: theme.textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            color: const Color(0xFF242744),
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          company,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: const Color(0xFF6C6F86),
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.xs),
-                        Wrap(
-                          spacing: AppSpacing.md,
-                          runSpacing: AppSpacing.xs,
-                          children: [
-                            _MetaText(icon: Icons.location_on_outlined, text: location),
-                            _MetaText(icon: Icons.schedule_rounded, text: type),
-                          ],
+                        const SizedBox(height: 12),
+                        _AppTextField(
+                          controller: phoneController,
+                          label: 'Phone number',
+                          icon: Icons.phone_outlined,
+                          keyboardType: TextInputType.phone,
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.md),
-                  Text(
-                    'Resume / CV *',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  InkWell(
-                    onTap: loading ? null : pickResume,
-                    borderRadius: BorderRadius.circular(14),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 22),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF0EFF4),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: const Color(0xFFE0DFE6)),
-                      ),
-                      child: Column(
-                        children: [
-                          Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFDEDFE8),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.cloud_upload_outlined, color: AppColors.primary),
-                          ),
-                          const SizedBox(height: AppSpacing.md),
-                          Text(
-                            'Click to upload or drag and drop',
-                            textAlign: TextAlign.center,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: const Color(0xFF4F526A),
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'PDF, DOCX, or RTF (Max. 5MB)',
-                            textAlign: TextAlign.center,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: const Color(0xFF8689A1),
-                            ),
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.md,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(AppRadii.pill),
-                              border: Border.all(color: AppColors.borderLight),
-                            ),
-                            child: Text(
-                              'Browse Files',
-                              style: theme.textTheme.labelMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  if (fileName != null) ...[
-                    const SizedBox(height: AppSpacing.md),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.sm,
-                        vertical: AppSpacing.sm,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEFEFFC),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFFD7D8F2)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.picture_as_pdf_outlined, size: 18, color: Color(0xFFDB554F)),
-                          const SizedBox(width: AppSpacing.sm),
-                          Expanded(
-                            child: Text(
-                              fileName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF3B3E5A),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: AppSpacing.lg),
-                  Text(
-                    'Cover Letter',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '(Optional)',
-                    style: theme.textTheme.labelSmall?.copyWith(color: AppColors.textSecondary),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF0EFF4),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFFE0DFE6)),
-                    ),
+
+                  const SizedBox(height: 14),
+
+                  _SectionCard(
+                    icon: Icons.edit_note_rounded,
+                    title: 'Cover Letter',
+                    subtitle: 'Optional, but recommended',
                     child: TextField(
                       controller: coverLetterController,
                       minLines: 5,
                       maxLines: 8,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: AppColors.textPrimary),
-                      decoration: const InputDecoration(
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textPrimary,
+                      ),
+                      decoration: InputDecoration(
                         hintText:
-                            'Write a brief message to the hiring manager detailing why you are a great fit for this role...',
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.all(AppSpacing.md),
+                            'Write a short message explaining why you are a good fit for this role...',
+                        hintStyle: const TextStyle(color: Color(0xFF85889A)),
+                        filled: true,
+                        fillColor: const Color(0xFFF8F8FC),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(color: Color(0xFFE3E5EF)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(color: Color(0xFFE3E5EF)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(
+                            color: AppColors.primary,
+                            width: 1.4,
+                          ),
+                        ),
                       ),
                     ),
                   ),
+
                   if (loading) ...[
-                    const SizedBox(height: AppSpacing.md),
+                    const SizedBox(height: 16),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(AppRadii.pill),
-                      child: LinearProgressIndicator(value: uploadProgress, minHeight: 6),
+                      child: LinearProgressIndicator(
+                        value: uploadProgress,
+                        minHeight: 7,
+                      ),
                     ),
-                    const SizedBox(height: AppSpacing.xs),
+                    const SizedBox(height: 8),
                     Text(
                       '${(uploadProgress * 100).toStringAsFixed(0)}% uploaded',
                       style: theme.textTheme.labelMedium?.copyWith(
@@ -421,12 +381,10 @@ class _ApplyJobScreenState extends State<ApplyJobScreen> {
                       ),
                     ),
                   ],
+
                   if (errorMessage != null) ...[
-                    const SizedBox(height: AppSpacing.md),
-                    Text(
-                      errorMessage!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: AppColors.danger),
-                    ),
+                    const SizedBox(height: 16),
+                    _ErrorBox(message: errorMessage!),
                   ],
                 ],
               ),
@@ -434,48 +392,11 @@ class _ApplyJobScreenState extends State<ApplyJobScreen> {
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.md,
-              AppSpacing.sm,
-              AppSpacing.md,
-              AppSpacing.md,
-            ),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: AppShadows.soft(),
-            ),
-            child: SafeArea(
-              top: false,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: loading ? null : _saveDraft,
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: AppColors.primary),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        minimumSize: const Size.fromHeight(52),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      child: const Text('Save Draft'),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    flex: 2,
-                    child: AppButton(
-                      label: loading ? 'Submitting...' : 'Submit Application',
-                      leadingIcon: Icons.arrow_forward_rounded,
-                      // JOB-DET-002: Disable button until resume is selected
-                      onPressed: (loading || selectedResume == null) ? null : submitApplication,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          _BottomApplyBar(
+            loading: loading,
+            canSubmit: selectedResume != null,
+            onSaveDraft: _saveDraft,
+            onSubmit: submitApplication,
           ),
           CandidateFooter(
             currentIndex: widget.currentIndex,
@@ -487,26 +408,442 @@ class _ApplyJobScreenState extends State<ApplyJobScreen> {
   }
 }
 
-class _MetaText extends StatelessWidget {
-  final IconData icon;
-  final String text;
+class _HeroJobCard extends StatelessWidget {
+  final String title;
+  final String company;
+  final String location;
+  final String type;
 
-  const _MetaText({required this.icon, required this.text});
+  const _HeroJobCard({
+    required this.title,
+    required this.company,
+    required this.location,
+    required this.type,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 14, color: const Color(0xFF737792)),
-        const SizedBox(width: 4),
-        Text(
-          text,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: const Color(0xFF737792),
-              ),
+    final theme = Theme.of(context);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(26),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF0B126A),
+            Color(0xFF1727B8),
+          ],
         ),
-      ],
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0B126A).withOpacity(0.22),
+            blurRadius: 24,
+            offset: const Offset(0, 14),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -24,
+            top: -30,
+            child: _DecorCircle(size: 110, opacity: 0.12),
+          ),
+          Positioned(
+            right: 42,
+            bottom: -45,
+            child: _DecorCircle(size: 90, opacity: 0.09),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 54,
+                    height: 54,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: const Icon(
+                      Icons.business_center_outlined,
+                      color: AppColors.primary,
+                      size: 28,
+                    ),
+                  ),
+                  const Spacer(),
+                  _HeroPill(
+                    icon: Icons.bookmark_border_rounded,
+                    text: 'Save',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              Text(
+                title,
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  height: 1.15,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                company,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: Colors.white.withOpacity(0.82),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _HeroPill(icon: Icons.location_on_outlined, text: location),
+                  _HeroPill(icon: Icons.access_time_rounded, text: type),
+                  const _HeroPill(
+                    icon: Icons.payments_outlined,
+                    text: 'Negotiable',
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Widget child;
+
+  const _SectionCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFE8EAF3)),
+        boxShadow: AppShadows.soft(),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF1FF),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: AppColors.primary, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF171A3A),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: const Color(0xFF7A7D91),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _UploadBox extends StatelessWidget {
+  final String? fileName;
+  final bool isDisabled;
+  final VoidCallback onTap;
+
+  const _UploadBox({
+    required this.fileName,
+    required this.isDisabled,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasFile = fileName != null;
+
+    return InkWell(
+      onTap: isDisabled ? null : onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+        decoration: BoxDecoration(
+          color: hasFile ? const Color(0xFFEFFBF3) : const Color(0xFFF7F8FD),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: hasFile ? const Color(0xFFBCE7C8) : const Color(0xFFE2E5F0),
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              hasFile ? Icons.check_circle_rounded : Icons.cloud_upload_outlined,
+              color: hasFile ? Colors.green : AppColors.primary,
+              size: 38,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              hasFile ? fileName! : 'Tap to upload resume',
+              textAlign: TextAlign.center,
+              maxLines: hasFile ? 1 : 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF252946),
+                  ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              hasFile ? 'Tap to replace file' : 'PDF, DOC, or DOCX only',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: const Color(0xFF85889A),
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AppTextField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final IconData icon;
+  final TextInputType keyboardType;
+
+  const _AppTextField({
+    required this.controller,
+    required this.label,
+    required this.icon,
+    required this.keyboardType,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      decoration: InputDecoration(
+        prefixIcon: Icon(icon, color: const Color(0xFF737792), size: 20),
+        labelText: label,
+        filled: true,
+        fillColor: const Color(0xFFF8F8FC),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: Color(0xFFE3E5EF)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: Color(0xFFE3E5EF)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.4),
+        ),
+      ),
+    );
+  }
+}
+
+class _BottomApplyBar extends StatelessWidget {
+  final bool loading;
+  final bool canSubmit;
+  final VoidCallback onSaveDraft;
+  final VoidCallback onSubmit;
+
+  const _BottomApplyBar({
+    required this.loading,
+    required this.canSubmit,
+    required this.onSaveDraft,
+    required this.onSubmit,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: const Color(0xFFE8EAF3)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 18,
+            offset: const Offset(0, -8),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        bottom: false,
+        child: Row(
+          children: [
+            SizedBox(
+              width: 52,
+              height: 52,
+              child: OutlinedButton(
+                onPressed: loading ? null : onSaveDraft,
+                style: OutlinedButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  side: const BorderSide(color: Color(0xFFD7DAE8)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: const Icon(Icons.bookmark_border_rounded),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: AppButton(
+                label: loading ? 'Submitting...' : 'Apply Now',
+                leadingIcon: Icons.arrow_forward_rounded,
+                onPressed: (loading || !canSubmit) ? null : onSubmit,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HeroPill extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _HeroPill({
+    required this.icon,
+    required this.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.14),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withOpacity(0.18)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 14),
+          const SizedBox(width: 5),
+          Text(
+            text,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DecorCircle extends StatelessWidget {
+  final double size;
+  final double opacity;
+
+  const _DecorCircle({
+    required this.size,
+    required this.opacity,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white.withOpacity(opacity),
+      ),
+    );
+  }
+}
+
+class _ErrorBox extends StatelessWidget {
+  final String message;
+
+  const _ErrorBox({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF1F1),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFFFD2D2)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline_rounded, color: AppColors.danger),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.danger,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

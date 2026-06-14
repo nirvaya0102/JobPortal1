@@ -3,11 +3,14 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../../../core/api/api_client.dart';
+import '../../../core/config/app_config.dart';
 import '../models/job_model.dart';
 import '../models/application_model.dart';
 
 class JobService {
-  final String baseUrl = 'http://10.0.2.2:5000/api';
+  final String baseUrl = AppConfig.apiBaseUrl.endsWith('/')
+      ? AppConfig.apiBaseUrl.substring(0, AppConfig.apiBaseUrl.length - 1)
+      : AppConfig.apiBaseUrl;
 
   Future<List<JobModel>> getMyJobs(String token) async {
     final response = await http.get(

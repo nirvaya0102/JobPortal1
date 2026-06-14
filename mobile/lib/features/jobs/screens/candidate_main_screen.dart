@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import '../../profile/screens/candidate_profile_screen.dart';
 import 'candidate_dashboard_screen.dart';
 import '../../../shared/widgets/candidate_footer.dart';
 import 'candidate_applied_jobs_screen.dart';
 import 'candidate_saved_jobs_screen.dart';
 import 'candidate_jobs_list_screen.dart';
-import 'package:mobile/features/profile/screens/candidate_profile_screen.dart';
+
 
 class CandidateMainScreen extends StatefulWidget {
   final int initialIndex;
@@ -35,6 +36,8 @@ class _CandidateMainScreenState extends State<CandidateMainScreen> {
       const CandidateSavedJobsScreen(),
       const CandidateAppliedJobsScreen(),
       const CandidateProfileScreen(),
+      
+
     ];
   }
 

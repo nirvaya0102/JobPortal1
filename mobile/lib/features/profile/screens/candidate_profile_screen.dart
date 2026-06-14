@@ -101,22 +101,38 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                ListTile(
-                  leading: const Icon(Icons.interests_outlined),
-                  title: const Text('Edit Skills'),
-                  onTap: () {
-                    Navigator.pop(sheetContext);
-                    _showSkillsEditor(profile.skills);
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.refresh_rounded),
-                  title: const Text('Refresh Profile'),
-                  onTap: () {
-                    Navigator.pop(sheetContext);
-                    _refreshProfile();
-                  },
-                ),
+               ListTile(
+                 leading: const Icon(Icons.work_outline),
+                 title: const Text('Edit Headline'),
+                 onTap: () {
+                   Navigator.pop(sheetContext);
+                   _showFeatureNote('Headline edit API not added yet.');
+                 },
+               ),
+               ListTile(
+                 leading: const Icon(Icons.notes_outlined),
+                 title: const Text('Edit Bio'),
+                 onTap: () {
+                   Navigator.pop(sheetContext);
+                   _showFeatureNote('Bio edit API not added yet.');
+                 },
+               ),
+               ListTile(
+                 leading: const Icon(Icons.location_on_outlined),
+                 title: const Text('Edit Location'),
+                 onTap: () {
+                   Navigator.pop(sheetContext);
+                   _showFeatureNote('Location edit API not added yet.');
+                 },
+               ),
+               ListTile(
+                 leading: const Icon(Icons.upload_file_outlined),
+                 title: const Text('Upload Resume'),
+                 onTap: () {
+                   Navigator.pop(sheetContext);
+                   _showFeatureNote('Resume upload API not added yet.');
+                 },
+               ),
               ],
             ),
           ),
@@ -294,7 +310,7 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
                 _ProfileRowItem(
                   icon: Icons.interests_outlined,
                   title: 'Skills',
-                  subtitle: profile.skills.isEmpty ? 'No skills added yet' : profile.skills.join(' · '),
+                  subtitle: profile.skills.isEmpty ? 'No skills added yet' : profile.skills.join(' ï¿½ '),
                 ),
                 _ProfileRowItem(
                   icon: Icons.description_outlined,

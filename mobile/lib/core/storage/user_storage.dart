@@ -7,6 +7,7 @@ class UserStorage {
   static const String _roleKey = 'user_role';
   static const String _locationKey = 'user_location';
   static const String _emailKey = 'user_email';
+  static const String _phoneKey = 'user_phone';
   static const String _rememberMeEmailKey = 'remember_me_email';  // AUTH-006
 
   static Future<void> saveUser({
@@ -14,6 +15,7 @@ class UserStorage {
     required String role,
     String? location,
     String? email,
+    String? phone,
   }) async {
     await _storage.write(key: _nameKey, value: name);
     await _storage.write(key: _roleKey, value: role);
@@ -23,12 +25,19 @@ class UserStorage {
     if (email != null && email.trim().isNotEmpty) {
       await _storage.write(key: _emailKey, value: email.trim());
     }
+    if (phone != null && phone.trim().isNotEmpty) {
+      await _storage.write(key: _phoneKey, value: phone.trim());
+    }
   }
 
   static Future<String?> getName() => _storage.read(key: _nameKey);
   static Future<String?> getRole() => _storage.read(key: _roleKey);
   static Future<String?> getLocation() => _storage.read(key: _locationKey);
   static Future<String?> getEmail() => _storage.read(key: _emailKey);
+  static Future<String?> getPhone() => _storage.read(key: _phoneKey);
+
+  static Future<void> savePhone(String phone) =>
+      _storage.write(key: _phoneKey, value: phone.trim());
 
   // AUTH-006: Remember me functionality
   static Future<void> saveRememberMeEmail(String email) =>
@@ -45,5 +54,6 @@ class UserStorage {
     await _storage.delete(key: _roleKey);
     await _storage.delete(key: _locationKey);
     await _storage.delete(key: _emailKey);
+    await _storage.delete(key: _phoneKey);
   }
 }

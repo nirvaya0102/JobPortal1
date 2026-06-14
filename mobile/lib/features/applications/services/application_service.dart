@@ -6,12 +6,16 @@ class ApplicationService {
   Future<void> applyToJob({
     required String jobId,
     required File resumeFile,
+    required String email,
+    required String phone,
     required String coverLetter,
     required Function(int sent, int total) onProgress,
   }) async {
-    final fileName = resumeFile.path.split('/').last;
+    final fileName = resumeFile.path.split(RegExp(r'[/\\]')).last;
 
     final formData = FormData.fromMap({
+      'email': email,
+      'phone': phone,
       'coverLetter': coverLetter,
       'resume': await MultipartFile.fromFile(
         resumeFile.path,
