@@ -1,12 +1,16 @@
 import { Request, Response } from "express";
 import prisma from "../../lib/prisma";
 import {
+  deleteCandidateResumeService,
   forgotPasswordService,
+  getAuthenticatedUserService,
   loginUser,
   registerUser,
   refreshTokenService,
   resendVerificationEmailService,
   resetPasswordService,
+  updateCandidateProfileService,
+  uploadCandidateResumeService,
   verifyEmailService,
 } from "./auth.service";
 
@@ -14,6 +18,7 @@ import { asyncHandler } from "../../utils/asyncHandler";
 import { AppError } from "../../utils/AppError";
 import { sendSuccess } from "../../utils/ApiResponse";
 import { COOKIE_NAMES } from "../../constants";
+import { uploadToCloudinary } from "../../utils/cloudinary";
 
 
 const getSingleString = (value: unknown): string | undefined => {
@@ -119,7 +124,11 @@ export const resendVerificationEmail = asyncHandler(
 
 export const verifyEmail = asyncHandler(
   async (req: Request, res: Response) => {
-    const token = req.params.token;
+    const token = getSingleString(req.params.token);
+
+    if (!token) {
+      throw new AppError("Verification token is required", 400);
+    }
 
     const result = await verifyEmailService(token);
 
@@ -133,17 +142,7 @@ export const verifyEmail = asyncHandler(
 export const getMe = asyncHandler(async (req: any, res: Response) => {
   const userId = req.user?.userId;
 
-  if (!userId) {
-    throw new AppError("Unauthorized", 401);
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    include: {
-      company: true,
-      candidateProfile: true,
-    },
-  });
+  const user = await getAuthenticatedUserService(userId);
 
   return sendSuccess({
     res,
@@ -153,6 +152,66 @@ export const getMe = asyncHandler(async (req: any, res: Response) => {
     },
   });
 });
+
+export const updateCandidateProfile = asyncHandler(
+  async (req: any, res: Response) => {
+    const profile = await updateCandidateProfileService(
+      req.user?.userId,
+      req.body
+    );
+
+    return sendSuccess({
+      res,
+      message: "Profile updated successfully",
+      data: {
+        profile,
+      },
+    });
+  }
+);
+
+export const uploadCandidateResume = asyncHandler(
+  async (req: any, res: Response) => {
+    const file = req.file as Express.Multer.File | undefined;
+
+    if (!file) {
+      throw new AppError("Resume file is required", 400);
+    }
+
+    const uploadedResume = await uploadToCloudinary(
+      file,
+      "jobportal/candidate-profiles/resumes"
+    );
+
+    const profile = await uploadCandidateResumeService(req.user?.userId, {
+      resumeUrl: uploadedResume.url,
+      resumeFileName: file.originalname,
+      resumeFileType: file.mimetype,
+    });
+
+    return sendSuccess({
+      res,
+      message: "Resume uploaded successfully",
+      data: {
+        profile,
+      },
+    });
+  }
+);
+
+export const deleteCandidateResume = asyncHandler(
+  async (req: any, res: Response) => {
+    const profile = await deleteCandidateResumeService(req.user?.userId);
+
+    return sendSuccess({
+      res,
+      message: "Resume removed successfully",
+      data: {
+        profile,
+      },
+    });
+  }
+);
 
 export const refreshToken = asyncHandler(
   async (req: Request, res: Response) => {

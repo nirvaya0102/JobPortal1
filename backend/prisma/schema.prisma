@@ -11,6 +11,8 @@ model User {
   id        String   @id @default(uuid())
   name      String
   email     String   @unique
+  phone     String?
+  location  String?
   password  String
   role      Role
   createdAt DateTime @default(now())
@@ -96,6 +98,8 @@ model Application {
   id             String            @id @default(uuid())
   jobId          String
   candidateId    String
+  applicantEmail String?
+  applicantPhone String?
   coverLetter    String?
   resumeUrl      String?
   resumePublicId String?

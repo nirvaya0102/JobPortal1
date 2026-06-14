@@ -166,6 +166,8 @@ export const applyToJobService = async (
   data: {
     jobId,
     candidateId: userId,
+    applicantEmail: data?.applicantEmail,
+    applicantPhone: data?.applicantPhone,
     coverLetter: data?.coverLetter,
     resumeUrl: data?.resumeUrl,
     resumeFileName: data?.resumeFileName,

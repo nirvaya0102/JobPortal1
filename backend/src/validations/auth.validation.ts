@@ -23,6 +23,13 @@ export const registerSchema = z.object({
 
   role: z.enum(["CANDIDATE", "EMPLOYER"]),
 
+  phone: z
+    .string()
+    .trim()
+    .min(7, "Phone number must be at least 7 digits")
+    .max(20, "Phone number is too long")
+    .optional(),
+
   companyName: z.string().trim().optional(),
   companyLocation: z.string().trim().optional(),
   companyDescription: z.string().trim().optional(),
@@ -61,4 +68,33 @@ export const resendVerificationSchema = z.object({
     .toLowerCase()
     .email("Invalid email address"),
 });
+
+export const updateCandidateProfileSchema = z
+  .object({
+    headline: z
+      .string()
+      .trim()
+      .max(100, "Headline must be less than 100 characters")
+      .optional(),
+
+    bio: z
+      .string()
+      .trim()
+      .max(1000, "Bio must be less than 1000 characters")
+      .optional(),
+
+    skills: z.string().trim().optional(),
+
+    location: z.string().trim().optional(),
+  })
+  .refine(
+    (data) =>
+      data.headline !== undefined ||
+      data.bio !== undefined ||
+      data.skills !== undefined ||
+      data.location !== undefined,
+    {
+      message: "At least one profile field is required",
+    }
+  );
 

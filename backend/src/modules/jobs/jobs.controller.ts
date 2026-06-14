@@ -145,6 +145,8 @@ export const applyToJob = asyncHandler(async (req: any, res: Response) => {
   const file = req.file;
 
   const validatedData = validateBody(applyToJobSchema, {
+    email: req.body.email,
+    phone: req.body.phone,
     coverLetter: req.body.coverLetter,
   });
 
@@ -158,6 +160,8 @@ export const applyToJob = asyncHandler(async (req: any, res: Response) => {
     req.params.jobId,
     req.user.userId,
     {
+      applicantEmail: validatedData.email,
+      applicantPhone: validatedData.phone,
       coverLetter: validatedData.coverLetter,
       resumeUrl: uploadedResume?.url || null,
       resumePublicId: uploadedResume?.publicId || null,

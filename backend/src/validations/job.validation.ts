@@ -22,5 +22,11 @@ export const createJobSchema = z.object({
 );
 
 export const applyToJobSchema = z.object({
+  email: z.string().trim().toLowerCase().email("Valid email is required"),
+  phone: z
+    .string()
+    .trim()
+    .min(7, "Phone number is required")
+    .max(20, "Phone number is too long"),
   coverLetter: z.string().trim().min(5, "Cover letter is required").optional(),
 });

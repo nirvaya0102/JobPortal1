@@ -9,7 +9,36 @@ import {
 import { sendEmail } from "../../utils/email";
 import { AppError } from "../../utils/AppError";
 import { USER_ROLES, TOKEN_EXPIRY } from "../../constants";
+
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
+
+type CandidateProfileInput = {
+  headline?: string;
+  bio?: string;
+  skills?: string;
+  location?: string;
+};
+
+type ResumeUploadInput = {
+  resumeUrl: string;
+  resumeFileName: string;
+  resumeFileType: string;
+};
+
+const safeUserSelect = {
+  id: true,
+  name: true,
+  email: true,
+  phone: true,
+  location: true,
+  role: true,
+  createdAt: true,
+  emailVerified: true,
+  fcmToken: true,
+  companyId: true,
+  company: true,
+  candidateProfile: true,
+};
 
 function createSecureToken() {
   return crypto.randomBytes(32).toString("hex");
@@ -19,6 +48,7 @@ export const registerUser = async (data: any) => {
   const {
     name,
     email,
+    phone,
     password,
     role,
     companyName,
@@ -40,7 +70,6 @@ export const registerUser = async (data: any) => {
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
-
   const emailVerificationToken = createSecureToken();
   const emailVerificationExpires = new Date(
     Date.now() + TOKEN_EXPIRY.EMAIL_VERIFICATION_MS
@@ -66,6 +95,7 @@ export const registerUser = async (data: any) => {
       data: {
         name,
         email,
+        phone: phone || null,
         password: hashedPassword,
         role,
         companyId: company.id,
@@ -73,17 +103,34 @@ export const registerUser = async (data: any) => {
         emailVerificationToken,
         emailVerificationExpires,
       },
+      include: {
+        company: true,
+        candidateProfile: true,
+      },
     });
   } else {
     user = await prisma.user.create({
       data: {
         name,
         email,
+        phone: phone || null,
         password: hashedPassword,
         role,
         emailVerified: false,
         emailVerificationToken,
         emailVerificationExpires,
+        candidateProfile: {
+          create: {
+            headline: "",
+            bio: "",
+            skills: "",
+            resumeUrl: null,
+          },
+        },
+      },
+      include: {
+        company: true,
+        candidateProfile: true,
       },
     });
   }
@@ -96,7 +143,15 @@ export const registerUser = async (data: any) => {
     text: `Click this link to verify your email: ${verifyLink}`,
   });
 
-  const { password: _, refreshToken, ...safeUser } = user;
+  const {
+    password: _password,
+    refreshToken,
+    emailVerificationToken: _emailVerificationToken,
+    emailVerificationExpires: _emailVerificationExpires,
+    passwordResetToken: _passwordResetToken,
+    passwordResetExpires: _passwordResetExpires,
+    ...safeUser
+  } = user;
 
   return safeUser;
 };
@@ -109,14 +164,12 @@ export const loginUser = async (data: any) => {
   });
 
   if (!user) {
-    console.log(`Login failed: User not found for email: ${email}`);
     throw new AppError("Invalid credentials", 401);
   }
 
   const isPasswordValid = await bcrypt.compare(password, user.password);
 
   if (!isPasswordValid) {
-    console.log(`Login failed: Invalid password for email: ${email}`);
     throw new AppError("Invalid credentials", 401);
   }
 
@@ -134,7 +187,15 @@ export const loginUser = async (data: any) => {
     data: { refreshToken },
   });
 
-  const { password: _, refreshToken: __, ...safeUser } = user;
+  const {
+    password: _,
+    refreshToken: __,
+    emailVerificationToken,
+    emailVerificationExpires,
+    passwordResetToken,
+    passwordResetExpires,
+    ...safeUser
+  } = user;
 
   return {
     user: safeUser,
@@ -331,7 +392,161 @@ export const refreshTokenService = async (token: string) => {
 
   return {
     accessToken,
+    refreshToken: token,
   };
+};
+
+export const getAuthenticatedUserService = async (userId: string) => {
+  if (!userId) {
+    throw new AppError("Unauthorized", 401);
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: safeUserSelect,
+  });
+
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  return user;
+};
+
+export const updateCandidateProfileService = async (
+  userId: string,
+  data: CandidateProfileInput
+) => {
+  if (!userId) {
+    throw new AppError("Unauthorized", 401);
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      role: true,
+    },
+  });
+
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  if (user.role !== USER_ROLES.CANDIDATE) {
+    throw new AppError("Only candidates can update candidate profiles", 403);
+  }
+
+  const { location, headline, bio, skills } = data;
+
+  await prisma.$transaction(async (tx) => {
+    if (location !== undefined) {
+      await tx.user.update({
+        where: { id: userId },
+        data: { location },
+      });
+    }
+
+    await tx.candidateProfile.upsert({
+      where: { userId },
+      create: {
+        userId,
+        headline: headline ?? "",
+        bio: bio ?? "",
+        skills: skills ?? "",
+      },
+      update: {
+        ...(headline !== undefined && { headline }),
+        ...(bio !== undefined && { bio }),
+        ...(skills !== undefined && { skills }),
+      },
+    });
+  });
+
+  return getAuthenticatedUserService(userId);
+};
+
+export const uploadCandidateResumeService = async (
+  userId: string,
+  data: ResumeUploadInput
+) => {
+  if (!userId) {
+    throw new AppError("Unauthorized", 401);
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      role: true,
+    },
+  });
+
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  if (user.role !== USER_ROLES.CANDIDATE) {
+    throw new AppError("Only candidates can upload resumes", 403);
+  }
+
+  return prisma.candidateProfile.upsert({
+    where: { userId },
+    create: {
+      userId,
+      headline: "",
+      bio: "",
+      skills: "",
+      resumeUrl: data.resumeUrl,
+      resumeFileName: data.resumeFileName,
+      resumeFileType: data.resumeFileType,
+    },
+    update: {
+      resumeUrl: data.resumeUrl,
+      resumeFileName: data.resumeFileName,
+      resumeFileType: data.resumeFileType,
+    },
+  });
+};
+
+export const deleteCandidateResumeService = async (userId: string) => {
+  if (!userId) {
+    throw new AppError("Unauthorized", 401);
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      role: true,
+    },
+  });
+
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  if (user.role !== USER_ROLES.CANDIDATE) {
+    throw new AppError("Only candidates can delete resumes", 403);
+  }
+
+  return prisma.candidateProfile.upsert({
+    where: { userId },
+    create: {
+      userId,
+      headline: "",
+      bio: "",
+      skills: "",
+      resumeUrl: null,
+      resumeFileName: null,
+      resumeFileType: null,
+    },
+    update: {
+      resumeUrl: null,
+      resumeFileName: null,
+      resumeFileType: null,
+    },
+  });
 };
 
 export const logoutUserService = async (userId: string) => {
