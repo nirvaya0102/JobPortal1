@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { JobStatus, Prisma } from "@prisma/client";
 import prisma from "../../lib/prisma";
 import {
   createJobService,
@@ -55,14 +56,85 @@ export const createJob = asyncHandler(async (req: any, res: Response) => {
 export const getAllJobs = asyncHandler(async (req: Request, res: Response) => {
   const { page, limit, skip } = getPagination(req.query);
 
-  const orderBy = getSorting(
-    req.query,
-    ["createdAt", "title", "location", "jobType"],
-    "createdAt"
-  );
+  const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
+  const location =
+    typeof req.query.location === "string" ? req.query.location.trim() : "";
+  const jobType =
+    typeof req.query.jobType === "string" ? req.query.jobType.trim() : "";
+  const requestedStatus =
+    typeof req.query.status === "string" ? req.query.status.trim() : "OPEN";
+  const status = Object.values(JobStatus).includes(requestedStatus as JobStatus)
+    ? (requestedStatus as JobStatus)
+    : requestedStatus === "ALL"
+      ? "ALL"
+      : JobStatus.OPEN;
+  const salaryMin =
+    req.query.salaryMin !== undefined && req.query.salaryMin !== ""
+      ? Number(req.query.salaryMin)
+      : null;
+  const salaryMax =
+    req.query.salaryMax !== undefined && req.query.salaryMax !== ""
+      ? Number(req.query.salaryMax)
+      : null;
+  const sortBy = typeof req.query.sortBy === "string" ? req.query.sortBy : "createdAt";
+  const sortOrder = req.query.sortOrder === "asc" ? "asc" : "desc";
+
+  const filters: Prisma.JobWhereInput[] = [];
+
+  if (status !== "ALL") {
+    filters.push({ status });
+  }
+
+  if (search) {
+    filters.push({
+      OR: [
+        { title: { contains: search, mode: "insensitive" } },
+        { description: { contains: search, mode: "insensitive" } },
+        { location: { contains: search, mode: "insensitive" } },
+        { jobType: { contains: search, mode: "insensitive" } },
+        { company: { name: { contains: search, mode: "insensitive" } } },
+      ],
+    });
+  }
+
+  if (location) {
+    filters.push({
+      location: { contains: location, mode: "insensitive" },
+    });
+  }
+
+  if (jobType) {
+    filters.push({
+      jobType: { equals: jobType, mode: "insensitive" },
+    });
+  }
+
+  if (salaryMin !== null && !Number.isNaN(salaryMin)) {
+    filters.push({
+      OR: [{ salaryMax: { gte: salaryMin } }, { salaryMax: null }],
+    });
+  }
+
+  if (salaryMax !== null && !Number.isNaN(salaryMax)) {
+    filters.push({
+      OR: [{ salaryMin: { lte: salaryMax } }, { salaryMin: null }],
+    });
+  }
+
+  const where: Prisma.JobWhereInput = filters.length ? { AND: filters } : {};
+
+  const orderBy: Prisma.JobOrderByWithRelationInput =
+    sortBy === "applicantsCount" || sortBy === "applications"
+      ? { applications: { _count: sortOrder } }
+      : getSorting(
+          { sortBy, sortOrder },
+          ["createdAt", "title", "location", "jobType", "salaryMin", "salaryMax"],
+          "createdAt"
+        );
 
   const [jobs, total] = await Promise.all([
     prisma.job.findMany({
+      where,
       skip,
       take: limit,
       orderBy,
@@ -73,7 +145,7 @@ export const getAllJobs = asyncHandler(async (req: Request, res: Response) => {
         },
       },
     }),
-    prisma.job.count(),
+    prisma.job.count({ where }),
   ]);
 
   return sendSuccess({
