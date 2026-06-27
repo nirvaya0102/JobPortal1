@@ -12,6 +12,7 @@ import '../widgets/employer_quick_action_button.dart';
 import '../widgets/employer_recent_job_card.dart';
 import '../widgets/employer_stat_card.dart';
 import 'applicants_screen.dart';
+import 'employer_applicant_jobs_screen.dart';
 import 'employer_profile_screen.dart';
 
 class EmployerDashboardScreen extends StatefulWidget {
@@ -25,7 +26,8 @@ class EmployerDashboardScreen extends StatefulWidget {
   });
 
   @override
-  State<EmployerDashboardScreen> createState() => _EmployerDashboardScreenState();
+  State<EmployerDashboardScreen> createState() =>
+      _EmployerDashboardScreenState();
 }
 
 class _EmployerDashboardScreenState extends State<EmployerDashboardScreen> {
@@ -78,23 +80,13 @@ class _EmployerDashboardScreenState extends State<EmployerDashboardScreen> {
     );
   }
 
-  Future<void> _openApplicantsFromShortcut() async {
-    try {
-      final jobs = await _jobService.getMyJobs(widget.token);
-      if (!mounted) return;
-      if (jobs.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No jobs posted yet.')),
-        );
-        return;
-      }
-      _openApplicants(jobs.first);
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Something went wrong. Please try again.')),
-      );
-    }
+  void _openApplicantJobs() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EmployerApplicantJobsScreen(token: widget.token),
+      ),
+    );
   }
 
   String _friendlyError(Object? error) {
@@ -125,7 +117,7 @@ class _EmployerDashboardScreenState extends State<EmployerDashboardScreen> {
             return;
           }
           if (index == 2) {
-            _openApplicantsFromShortcut();
+            _openApplicantJobs();
             return;
           }
           Navigator.push(
@@ -140,17 +132,22 @@ class _EmployerDashboardScreenState extends State<EmployerDashboardScreen> {
           child: FutureBuilder<List<JobModel>>(
             future: _jobsFuture,
             builder: (context, snapshot) {
-              final loading = snapshot.connectionState == ConnectionState.waiting;
+              final loading =
+                  snapshot.connectionState == ConnectionState.waiting;
               final hasError = snapshot.hasError;
               final jobs = snapshot.data ?? <JobModel>[];
               final activeJobs = jobs
-                  .where((job) => job.status == 'OPEN' || job.status == 'ACTIVE')
+                  .where(
+                    (job) => job.status == 'OPEN' || job.status == 'ACTIVE',
+                  )
                   .length;
               final totalApplicants = jobs.fold<int>(
                 0,
                 (sum, job) => sum + job.applicantsCount,
               );
-              final jobsWithApplicants = jobs.where((job) => job.applicantsCount > 0).length;
+              final jobsWithApplicants = jobs
+                  .where((job) => job.applicantsCount > 0)
+                  .length;
 
               return RefreshIndicator(
                 color: EmployerDashboardPalette.primary,
@@ -185,7 +182,8 @@ class _EmployerDashboardScreenState extends State<EmployerDashboardScreen> {
                                     icon: Icons.groups_2_outlined,
                                     label: 'Applicants',
                                     value: '$totalApplicants',
-                                    helper: '$jobsWithApplicants jobs with activity',
+                                    helper:
+                                        '$jobsWithApplicants jobs with activity',
                                     accent: EmployerDashboardPalette.success,
                                   ),
                                 ];
@@ -224,7 +222,7 @@ class _EmployerDashboardScreenState extends State<EmployerDashboardScreen> {
                                 EmployerQuickActionButton(
                                   icon: Icons.groups_2_outlined,
                                   title: 'Applicants',
-                                  onTap: jobs.isEmpty ? null : () => _openApplicants(jobs.first),
+                                  onTap: _openApplicantJobs,
                                 ),
                                 EmployerQuickActionButton(
                                   icon: Icons.refresh_rounded,
@@ -235,14 +233,16 @@ class _EmployerDashboardScreenState extends State<EmployerDashboardScreen> {
                             ),
                             const SizedBox(height: AppSpacing.xl),
                             SectionTitle(
-                              title: 'Recent Jobs',
-                              actionText: jobs.isNotEmpty ? '${jobs.length} total' : null,
+                              title: 'Posted Jobs',
+                              actionText: jobs.isNotEmpty
+                                  ? '${jobs.length} total'
+                                  : null,
                             ),
                             const SizedBox(height: 6),
                             Text(
                               hasError
                                   ? _friendlyError(snapshot.error)
-                                  : 'Track applicant activity and review your latest postings.',
+                                  : 'Select any posted job to review its applicants.',
                               style: const TextStyle(
                                 fontSize: 13,
                                 color: EmployerDashboardPalette.textMuted,
@@ -259,30 +259,37 @@ class _EmployerDashboardScreenState extends State<EmployerDashboardScreen> {
                           ? const SliverToBoxAdapter(
                               child: Padding(
                                 padding: EdgeInsets.only(top: 30),
-                                child: Center(child: CircularProgressIndicator()),
+                                child: Center(
+                                  child: CircularProgressIndicator(),
+                                ),
                               ),
                             )
                           : jobs.isEmpty
-                              ? const SliverToBoxAdapter(child: _EmptyJobsCard())
-                              : SliverList.separated(
-                                  itemCount: jobs.length > 4 ? 4 : jobs.length,
-                                  separatorBuilder: (_, _) => const SizedBox(height: 12),
-                                  itemBuilder: (context, index) {
-                                    final job = jobs[index];
-                                    final location = (job.location?.isNotEmpty ?? false)
-                                        ? job.location!
-                                        : 'Location not set';
-                                    final type = (job.type?.isNotEmpty ?? false) ? job.type! : 'Full-time';
+                          ? const SliverToBoxAdapter(child: _EmptyJobsCard())
+                          : SliverList.separated(
+                              itemCount: jobs.length,
+                              separatorBuilder: (_, _) =>
+                                  const SizedBox(height: 12),
+                              itemBuilder: (context, index) {
+                                final job = jobs[index];
+                                final location =
+                                    (job.location?.isNotEmpty ?? false)
+                                    ? job.location!
+                                    : 'Location not set';
+                                final type = (job.type?.isNotEmpty ?? false)
+                                    ? job.type!
+                                    : 'Full-time';
 
-                                    return EmployerRecentJobCard(
-                                      title: job.title,
-                                      subtitle: '$location • $type',
-                                      applicantSummary: '${job.applicantsCount} applicants',
-                                      status: job.status,
-                                      onTapApplicants: () => _openApplicants(job),
-                                    );
-                                  },
-                                ),
+                                return EmployerRecentJobCard(
+                                  title: job.title,
+                                  subtitle: '$location • $type',
+                                  applicantSummary:
+                                      '${job.applicantsCount} applicants',
+                                  status: job.status,
+                                  onTapApplicants: () => _openApplicants(job),
+                                );
+                              },
+                            ),
                     ),
                   ],
                 ),

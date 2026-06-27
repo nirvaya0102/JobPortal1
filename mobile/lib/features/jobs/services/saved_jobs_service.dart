@@ -55,30 +55,44 @@ class SavedJobsService {
   static Map<String, dynamic> _jobModelToMap(JobModel job) {
     return {
       'id': job.id,
+      'jobCode': job.jobCode,
       'title': job.title,
       'companyName': job.companyName,
       'companyLogo': job.companyLogo,
+      'companyDescription': job.companyDescription,
+      'companyLocation': job.companyLocation,
+      'companyWebsite': job.companyWebsite,
       'location': job.location,
       'salary': job.salary,
       'type': job.type,
       'description': job.description,
       'status': job.status,
       'applicantsCount': job.applicantsCount,
+      'salaryMin': job.salaryMin,
+      'salaryMax': job.salaryMax,
+      'createdAt': job.createdAt,
     };
   }
 
   static JobModel _mapToJobModel(Map<String, dynamic> map) {
     return JobModel(
       id: (map['id'] ?? '').toString(),
+      jobCode: map['jobCode']?.toString(),
       title: (map['title'] ?? 'Untitled Job').toString(),
       companyName: map['companyName']?.toString(),
       companyLogo: map['companyLogo']?.toString(),
+      companyDescription: map['companyDescription']?.toString(),
+      companyLocation: map['companyLocation']?.toString(),
+      companyWebsite: map['companyWebsite']?.toString(),
       location: map['location']?.toString(),
       salary: map['salary']?.toString(),
       type: map['type']?.toString(),
       description: map['description']?.toString(),
       status: (map['status'] ?? 'OPEN').toString(),
       applicantsCount: int.tryParse('${map['applicantsCount'] ?? 0}') ?? 0,
+      salaryMin: int.tryParse('${map['salaryMin'] ?? ''}'),
+      salaryMax: int.tryParse('${map['salaryMax'] ?? ''}'),
+      createdAt: map['createdAt']?.toString(),
     );
   }
 }

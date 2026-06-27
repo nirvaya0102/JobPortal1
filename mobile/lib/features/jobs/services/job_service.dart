@@ -7,6 +7,48 @@ import '../../../core/config/app_config.dart';
 import '../models/job_model.dart';
 import '../models/application_model.dart';
 
+class JobsPageResult {
+  final List<JobModel> jobs;
+  final int total;
+  final int page;
+  final int limit;
+  final int totalPages;
+  final bool hasNextPage;
+  final bool hasPreviousPage;
+
+  const JobsPageResult({
+    required this.jobs,
+    required this.total,
+    required this.page,
+    required this.limit,
+    required this.totalPages,
+    required this.hasNextPage,
+    required this.hasPreviousPage,
+  });
+
+  factory JobsPageResult.fromJson(Map<String, dynamic> json) {
+    final jobsJson = (json['jobs'] ?? []) as List;
+    final pagination = json['pagination'] is Map
+        ? Map<String, dynamic>.from(json['pagination'])
+        : <String, dynamic>{};
+
+    final jobs = jobsJson
+        .whereType<Map>()
+        .map((job) => JobModel.fromJson(Map<String, dynamic>.from(job)))
+        .toList();
+
+    return JobsPageResult(
+      jobs: jobs,
+      total: int.tryParse('${pagination['total'] ?? jobs.length}') ?? jobs.length,
+      page: int.tryParse('${pagination['page'] ?? 1}') ?? 1,
+      limit: int.tryParse('${pagination['limit'] ?? jobs.length}') ?? jobs.length,
+      totalPages: int.tryParse('${pagination['totalPages'] ?? 1}') ?? 1,
+      hasNextPage: pagination['hasNextPage'] == true,
+      hasPreviousPage: pagination['hasPreviousPage'] == true,
+    );
+  }
+}
+
 class JobService {
   final String baseUrl = AppConfig.apiBaseUrl.endsWith('/')
       ? AppConfig.apiBaseUrl.substring(0, AppConfig.apiBaseUrl.length - 1)
@@ -14,7 +56,7 @@ class JobService {
 
   Future<List<JobModel>> getMyJobs(String token) async {
     final response = await http.get(
-      Uri.parse('$baseUrl/jobs/my-jobs'),
+      Uri.parse('$baseUrl/jobs/my-jobs?page=1&limit=100'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -32,44 +74,64 @@ class JobService {
   }
 
   Future<List<JobModel>> getJobs({int page = 1, int limit = 10}) async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/jobs?page=$page&limit=$limit'),
-      headers: {'Content-Type': 'application/json'},
-    );
-
-    final decoded = jsonDecode(response.body);
-
-    if (response.statusCode == 200) {
-      final List data = decoded['data']['jobs'] ?? [];
-      return data.map((job) => JobModel.fromJson(job)).toList();
-    }
-
-    throw Exception(decoded['message'] ?? 'Failed to load jobs');
+    final result = await getJobsPage(page: page, limit: limit);
+    return result.jobs;
   }
 
-  // SEARCH-001: Search functionality
+  Future<JobsPageResult> getJobsPage({
+    int page = 1,
+    int limit = 10,
+    String? search,
+    String? location,
+    String? jobType,
+    int? salaryMin,
+    int? salaryMax,
+    String sortBy = 'createdAt',
+    String sortOrder = 'desc',
+    String status = 'OPEN',
+  }) async {
+    try {
+      final response = await ApiClient.dio.get(
+        'jobs',
+        queryParameters: {
+          'page': page,
+          'limit': limit,
+          'status': status,
+          'sortBy': sortBy,
+          'sortOrder': sortOrder,
+          if (search != null && search.trim().isNotEmpty)
+            'search': search.trim(),
+          if (location != null && location.trim().isNotEmpty)
+            'location': location.trim(),
+          if (jobType != null && jobType.trim().isNotEmpty)
+            'jobType': jobType.trim(),
+          if (salaryMin != null) 'salaryMin': salaryMin,
+          if (salaryMax != null) 'salaryMax': salaryMax,
+        },
+      );
+
+      final data = response.data['data'] is Map
+          ? Map<String, dynamic>.from(response.data['data'])
+          : <String, dynamic>{};
+      return JobsPageResult.fromJson(data);
+    } on DioException catch (e) {
+      throw Exception(_readableError(e, 'Failed to load jobs'));
+    } catch (_) {
+      throw Exception('Something went wrong. Please try again.');
+    }
+  }
+
   Future<List<JobModel>> searchJobs({
     required String query,
     int page = 1,
     int limit = 10,
   }) async {
-    if (query.isEmpty) {
-      return getJobs(page: page, limit: limit);
-    }
-
-    final response = await http.get(
-      Uri.parse('$baseUrl/jobs/search?q=$query&page=$page&limit=$limit'),
-      headers: {'Content-Type': 'application/json'},
+    final result = await getJobsPage(
+      search: query,
+      page: page,
+      limit: limit,
     );
-
-    final decoded = jsonDecode(response.body);
-
-    if (response.statusCode == 200) {
-      final List data = decoded['data']['jobs'] ?? [];
-      return data.map((job) => JobModel.fromJson(job)).toList();
-    }
-
-    throw Exception(decoded['message'] ?? 'Search failed');
+    return result.jobs;
   }
 
   Future<JobModel> getJobById(String id) async {
@@ -178,5 +240,33 @@ class JobService {
           e.response?.data['message'] ?? e.message ?? 'Failed to update status';
       throw Exception(message);
     }
+  }
+
+  String _readableError(DioException error, String fallback) {
+    if (error.type == DioExceptionType.connectionError) {
+      return 'No internet connection.';
+    }
+    if (error.type == DioExceptionType.connectionTimeout ||
+        error.type == DioExceptionType.receiveTimeout ||
+        error.type == DioExceptionType.sendTimeout) {
+      return 'Connection timeout. Please try again.';
+    }
+
+    final statusCode = error.response?.statusCode;
+    if (statusCode == 401) {
+      return 'Session expired. Please login again.';
+    }
+    if (statusCode != null && statusCode >= 500) {
+      return 'Server error. Please try again later.';
+    }
+
+    final data = error.response?.data;
+    if (data is Map && data['message'] != null) {
+      final message = data['message'].toString().trim();
+      if (message.isNotEmpty) return message;
+    }
+
+    final message = error.message?.trim();
+    return message == null || message.isEmpty ? fallback : message;
   }
 }

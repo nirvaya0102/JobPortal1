@@ -29,17 +29,23 @@ class ApplicationModel {
 
   factory ApplicationModel.fromJson(Map<String, dynamic> json) {
     return ApplicationModel(
-      id: json['id'] ?? '',
-      jobId: json['jobId'] ?? '',
-      candidateId: json['candidateId'] ?? '',
-      applicantEmail: json['applicantEmail'],
-      applicantPhone: json['applicantPhone'],
-      coverLetter: json['coverLetter'],
-      status: json['status'] ?? 'PENDING',
-      appliedAt: json['appliedAt'] ?? '',
-      resumeFileName: json['resumeFileName'],
-      candidate: CandidateModel.fromJson(json['candidate'] ?? {}),
-      job: json['job'] != null ? JobModel.fromJson(Map<String, dynamic>.from(json['job'])) : null,
+      id: json['id']?.toString() ?? '',
+      jobId: json['jobId']?.toString() ?? '',
+      candidateId: json['candidateId']?.toString() ?? '',
+      applicantEmail: json['applicantEmail']?.toString(),
+      applicantPhone: json['applicantPhone']?.toString(),
+      coverLetter: json['coverLetter']?.toString(),
+      status: json['status']?.toString() ?? 'PENDING',
+      appliedAt: json['appliedAt']?.toString() ?? '',
+      resumeFileName: json['resumeFileName']?.toString(),
+      candidate: CandidateModel.fromJson(
+        json['candidate'] is Map
+            ? Map<String, dynamic>.from(json['candidate'])
+            : <String, dynamic>{},
+      ),
+      job: json['job'] is Map
+          ? JobModel.fromJson(Map<String, dynamic>.from(json['job']))
+          : null,
     );
   }
 }
@@ -59,10 +65,10 @@ class CandidateModel {
 
   factory CandidateModel.fromJson(Map<String, dynamic> json) {
     return CandidateModel(
-      id: json['id'] ?? '',
-      name: json['name'] ?? '',
-      email: json['email'] ?? '',
-      phone: json['phone'] ?? '',
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      email: json['email']?.toString() ?? '',
+      phone: json['phone']?.toString() ?? '',
     );
   }
 }

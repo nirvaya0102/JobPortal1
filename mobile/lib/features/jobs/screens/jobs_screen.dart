@@ -19,7 +19,10 @@ class JobsScreen extends StatefulWidget {
 class _JobsScreenState extends State<JobsScreen> {
   final JobService jobService = JobService();
   final ScrollController scrollController = ScrollController();
-  final TextEditingController searchController = TextEditingController();  // SEARCH-001
+  final TextEditingController searchController = TextEditingController();
+  final TextEditingController locationController = TextEditingController();
+  final TextEditingController salaryMinController = TextEditingController();
+  final TextEditingController salaryMaxController = TextEditingController();
 
   List<JobModel> jobs = [];
 
@@ -31,8 +34,14 @@ class _JobsScreenState extends State<JobsScreen> {
   bool hasMore = true;
   bool searching = false;
   String? errorMessage;
-  String searchQuery = '';  // SEARCH-001
-  Timer? _searchDebounce;  // SEARCH-001
+  String searchQuery = '';
+  String locationFilter = '';
+  String jobTypeFilter = '';
+  String sortBy = 'createdAt';
+  String sortOrder = 'desc';
+  int? salaryMinFilter;
+  int? salaryMaxFilter;
+  Timer? _searchDebounce;
 
   @override
   void initState() {
@@ -49,89 +58,59 @@ class _JobsScreenState extends State<JobsScreen> {
       }
     });
 
-    // SEARCH-001: Setup search with debouncing
     searchController.addListener(_onSearchChanged);
   }
 
-  // SEARCH-001: Debounced search
   void _onSearchChanged() {
-    // Keep suffix icon and search field state reactive while typing.
     if (mounted) {
       setState(() {});
     }
     _searchDebounce?.cancel();
     _searchDebounce = Timer(const Duration(milliseconds: 500), () {
-      setState(() {
-        searchQuery = searchController.text.trim();
-        page = 1;
-      });
-      if (searchQuery.isEmpty) {
-        fetchJobs();
-      } else {
-        _performSearch();
-      }
-    });
-  }
-
-  // SEARCH-001: Perform search
-  Future<void> _performSearch() async {
-    if (searchQuery.isEmpty) {
+      searchQuery = searchController.text.trim();
       fetchJobs();
-      return;
-    }
-
-    try {
-      setState(() {
-        loading = true;
-        searching = true;
-        errorMessage = null;
-        hasMore = true;
-      });
-
-      final result = await jobService.searchJobs(
-        query: searchQuery,
-        page: page,
-        limit: limit,
-      );
-
-      setState(() {
-        jobs = result;
-        hasMore = result.length == limit;
-      });
-    } catch (e) {
-      setState(() {
-        errorMessage = _getErrorMessage(e.toString());
-      });
-    } finally {
-      setState(() {
-        loading = false;
-        searching = false;
-      });
-    }
+    });
   }
 
   Future<void> fetchJobs() async {
     try {
       setState(() {
         loading = true;
+        searching = searchQuery.isNotEmpty;
         errorMessage = null;
         page = 1;
         hasMore = true;
       });
 
-      final result = await jobService.getJobs(page: page, limit: limit);
+      final result = await jobService.getJobsPage(
+        page: page,
+        limit: limit,
+        search: searchQuery,
+        location: locationFilter,
+        jobType: jobTypeFilter,
+        salaryMin: salaryMinFilter,
+        salaryMax: salaryMaxFilter,
+        sortBy: sortBy,
+        sortOrder: sortOrder,
+        status: 'OPEN',
+      );
+
+      if (!mounted) return;
 
       setState(() {
-        jobs = result;
-        hasMore = result.length == limit;
+        jobs = result.jobs;
+        hasMore = result.hasNextPage;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         errorMessage = _getErrorMessage(e.toString());
       });
     } finally {
+      if (!mounted) return;
       setState(() {
         loading = false;
+        searching = false;
       });
     }
   }
@@ -153,6 +132,151 @@ class _JobsScreenState extends State<JobsScreen> {
     }
   }
 
+  Future<void> _performSearch() async {
+    searchQuery = searchController.text.trim();
+    await fetchJobs();
+  }
+
+  bool get _hasActiveFilters =>
+      locationFilter.isNotEmpty ||
+      jobTypeFilter.isNotEmpty ||
+      salaryMinFilter != null ||
+      salaryMaxFilter != null;
+
+  void _applySort(String value) {
+    final parts = value.split(':');
+    setState(() {
+      sortBy = parts.first;
+      sortOrder = parts.length > 1 ? parts.last : 'desc';
+    });
+    fetchJobs();
+  }
+
+  Future<void> _openFilters() async {
+    locationController.text = locationFilter;
+    salaryMinController.text = salaryMinFilter?.toString() ?? '';
+    salaryMaxController.text = salaryMaxFilter?.toString() ?? '';
+    var selectedJobType = jobTypeFilter;
+
+    final applied = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadii.lg)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.lg,
+                AppSpacing.lg,
+                MediaQuery.viewInsetsOf(context).bottom + AppSpacing.lg,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Filter jobs',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  TextField(
+                    controller: locationController,
+                    decoration: const InputDecoration(
+                      labelText: 'Location',
+                      prefixIcon: Icon(Icons.location_on_outlined),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  DropdownButtonFormField<String>(
+                    value: selectedJobType.isEmpty ? null : selectedJobType,
+                    decoration: const InputDecoration(
+                      labelText: 'Job type',
+                      prefixIcon: Icon(Icons.work_outline),
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'Full-time', child: Text('Full-time')),
+                      DropdownMenuItem(value: 'Part-time', child: Text('Part-time')),
+                      DropdownMenuItem(value: 'Remote', child: Text('Remote')),
+                    ],
+                    onChanged: (value) {
+                      setSheetState(() {
+                        selectedJobType = value ?? '';
+                      });
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: salaryMinController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Min salary',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: TextField(
+                          controller: salaryMaxController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Max salary',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  Row(
+                    children: [
+                      TextButton(
+                        onPressed: () {
+                          locationController.clear();
+                          salaryMinController.clear();
+                          salaryMaxController.clear();
+                          selectedJobType = '';
+                          Navigator.pop(context, true);
+                        },
+                        child: const Text('Clear'),
+                      ),
+                      const Spacer(),
+                      FilledButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('Apply'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (applied != true) return;
+
+    setState(() {
+      locationFilter = locationController.text.trim();
+      jobTypeFilter = selectedJobType.trim();
+      salaryMinFilter = int.tryParse(salaryMinController.text.trim());
+      salaryMaxFilter = int.tryParse(salaryMaxController.text.trim());
+    });
+    fetchJobs();
+  }
+
   Future<void> fetchMoreJobs() async {
     try {
       setState(() {
@@ -160,20 +284,26 @@ class _JobsScreenState extends State<JobsScreen> {
       });
 
       final nextPage = page + 1;
-      final result = searchQuery.isEmpty
-          ? await jobService.getJobs(page: nextPage, limit: limit)
-          : await jobService.searchJobs(
-              query: searchQuery,
-              page: nextPage,
-              limit: limit,
-            );
+      final result = await jobService.getJobsPage(
+        page: nextPage,
+        limit: limit,
+        search: searchQuery,
+        location: locationFilter,
+        jobType: jobTypeFilter,
+        salaryMin: salaryMinFilter,
+        salaryMax: salaryMaxFilter,
+        sortBy: sortBy,
+        sortOrder: sortOrder,
+        status: 'OPEN',
+      );
 
       if (!mounted) return;
 
       setState(() {
         page = nextPage;
-        jobs.addAll(result);
-        hasMore = result.length == limit;
+        final existingIds = jobs.map((job) => job.id).toSet();
+        jobs.addAll(result.jobs.where((job) => !existingIds.contains(job.id)));
+        hasMore = result.hasNextPage;
       });
     } catch (e) {
       if (!mounted) return;
@@ -194,6 +324,9 @@ class _JobsScreenState extends State<JobsScreen> {
   void dispose() {
     scrollController.dispose();
     searchController.dispose();
+    locationController.dispose();
+    salaryMinController.dispose();
+    salaryMaxController.dispose();
     _searchDebounce?.cancel();
     super.dispose();
   }
@@ -265,12 +398,13 @@ class _JobsScreenState extends State<JobsScreen> {
                   border: Border.all(color: AppColors.borderLight),
                 ),
                 child: IconButton(
-                  icon: const Icon(Icons.filter_alt_outlined, size: 19),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Sort and filter options coming soon.')),
-                    );
-                  },
+                  icon: Icon(
+                    _hasActiveFilters
+                        ? Icons.filter_alt_rounded
+                        : Icons.filter_alt_outlined,
+                    size: 19,
+                  ),
+                  onPressed: _openFilters,
                 ),
               ),
             ],
@@ -308,6 +442,79 @@ class _JobsScreenState extends State<JobsScreen> {
             ),
           ),
         ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            0,
+            AppSpacing.lg,
+            AppSpacing.sm,
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: '$sortBy:$sortOrder',
+                  isDense: true,
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: Colors.white,
+                    prefixIcon: const Icon(Icons.sort_rounded, size: 18),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                      vertical: AppSpacing.xs,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppRadii.md),
+                      borderSide: const BorderSide(color: AppColors.borderLight),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppRadii.md),
+                      borderSide: const BorderSide(color: AppColors.borderLight),
+                    ),
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'createdAt:desc',
+                      child: Text('Newest first'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'createdAt:asc',
+                      child: Text('Oldest first'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'salaryMax:desc',
+                      child: Text('Salary high to low'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'salaryMin:asc',
+                      child: Text('Salary low to high'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'applicantsCount:desc',
+                      child: Text('Most applicants'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) _applySort(value);
+                  },
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              ActionChip(
+                avatar: Icon(
+                  _hasActiveFilters ? Icons.filter_alt_rounded : Icons.tune_rounded,
+                  size: 17,
+                ),
+                label: Text(_hasActiveFilters ? 'Filters on' : 'Filters'),
+                onPressed: _openFilters,
+                backgroundColor: _hasActiveFilters
+                    ? AppColors.primary.withValues(alpha: 0.10)
+                    : Colors.white,
+                side: const BorderSide(color: AppColors.borderLight),
+              ),
+            ],
+          ),
+        ),
         if (searching)
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg),
@@ -337,21 +544,29 @@ class _JobsScreenState extends State<JobsScreen> {
                       const SizedBox(height: 120),
                       _ExploreStateCard(
                         icon: Icons.work_outline_rounded,
-                        title: searchQuery.isEmpty
-                            ? 'No jobs available right now'
-                            : 'No jobs found for "$searchQuery"',
-                        message: searchQuery.isEmpty
-                            ? 'Check back later for new opportunities.'
-                            : 'Try different keywords or browse all jobs.',
-                        actionLabel: searchQuery.isNotEmpty ? 'Clear Search' : 'Refresh',
+                        title: searchQuery.isNotEmpty
+                            ? 'No jobs found for "$searchQuery"'
+                            : _hasActiveFilters
+                            ? 'No jobs match these filters'
+                            : 'No jobs available right now',
+                        message: searchQuery.isNotEmpty || _hasActiveFilters
+                            ? 'Try different keywords or filters.'
+                            : 'Check back later for new opportunities.',
+                        actionLabel: searchQuery.isNotEmpty || _hasActiveFilters
+                            ? 'Clear Filters'
+                            : 'Refresh',
                         onAction: () {
                           if (searchQuery.isNotEmpty) {
                             searchController.clear();
-                            setState(() {
-                              searchQuery = '';
-                              page = 1;
-                            });
                           }
+                          setState(() {
+                            searchQuery = '';
+                            locationFilter = '';
+                            jobTypeFilter = '';
+                            salaryMinFilter = null;
+                            salaryMaxFilter = null;
+                            page = 1;
+                          });
                           fetchJobs();
                         },
                       ),

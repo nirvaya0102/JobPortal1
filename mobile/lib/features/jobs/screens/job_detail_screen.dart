@@ -212,6 +212,9 @@ List<String> _extractSkills(String description) {
     final jobType = (job!.type ?? 'Full-time').trim();
     final description = (job!.description ?? '').trim();
     final requirements = _requirementsFromDescription(description);
+    final companyDescription = (job!.companyDescription ?? '').trim();
+    final companyLocation = (job!.companyLocation ?? '').trim();
+    final companyWebsite = (job!.companyWebsite ?? '').trim();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFF),
@@ -249,7 +252,7 @@ List<String> _extractSkills(String description) {
                 Expanded(
                   child: _SmallInfoCard(
                     title: 'Applicants',
-                            value: '${job!.applicantsCount ?? 0}',
+                            value: '${job!.applicantsCount}',
                             icon: Icons.people_alt_outlined,
                   ),
                 ),
@@ -381,7 +384,9 @@ List<String> _extractSkills(String description) {
                   const SizedBox(height: AppSpacing.md),
 
                   Text(
-                    'This company is focused on delivering high-quality work with modern systems and a strong team culture.',
+                    companyDescription.isNotEmpty
+                        ? companyDescription
+                        : 'Company details are not available yet.',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: const Color(0xFF4A4D68),
                       height: 1.5,
@@ -393,13 +398,15 @@ List<String> _extractSkills(String description) {
                   Row(
                     children: [
                       const Icon(
-                        Icons.group_outlined,
+                        Icons.location_on_outlined,
                         size: 16,
                         color: AppColors.textSecondary,
                       ),
                       const SizedBox(width: AppSpacing.xs),
                       Text(
-                        '50-200 Employees',
+                        companyLocation.isNotEmpty
+                            ? companyLocation
+                            : 'Location not available',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: AppColors.textSecondary,
                         ),
@@ -418,7 +425,9 @@ List<String> _extractSkills(String description) {
                       ),
                       const SizedBox(width: AppSpacing.xs),
                       Text(
-                        'www.${company.toLowerCase().replaceAll(' ', '')}.com',
+                        companyWebsite.isNotEmpty
+                            ? companyWebsite
+                            : 'Website not available',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: AppColors.primary,
                           fontWeight: FontWeight.w700,

@@ -1,3 +1,7 @@
+import 'dart:io';
+
+import 'package:dio/dio.dart';
+
 import '../../../core/api/api_client.dart';
 import '../../../core/storage/user_storage.dart';
 
@@ -7,12 +11,7 @@ class CandidateProfileService {
     final meData = _asMap(meResponse.data['data'] ?? meResponse.data);
     final user = _asMap(meData['user']);
 
-    final applicationsResponse = await ApiClient.dio.get(
-      'jobs/my-applications?page=1&limit=1',
-    );
-    final applicationsData = _asMap(applicationsResponse.data['data']);
-    final pagination = _asMap(applicationsData['pagination']);
-    final applicationsCount = _asInt(pagination['total']);
+    final applicationsCount = await _fetchApplicationsCount();
 
     final profile = _asMap(user['candidateProfile']);
     final skillsText = (profile['skills'] ?? '').toString().trim();
@@ -76,6 +75,97 @@ class CandidateProfileService {
     );
   }
 
+  Future<void> updateProfile({
+    required String headline,
+    required String bio,
+    required String location,
+    required List<String> skills,
+  }) async {
+    try {
+      await ApiClient.dio.patch(
+        'auth/profile',
+        data: {
+          'headline': headline.trim(),
+          'bio': bio.trim(),
+          'location': location.trim(),
+          'skills': skills
+              .map((skill) => skill.trim())
+              .where((skill) => skill.isNotEmpty)
+              .join(','),
+        },
+      );
+    } on DioException catch (e) {
+      throw Exception(_readableError(e, 'Failed to update profile'));
+    } catch (_) {
+      throw Exception('Something went wrong. Please try again.');
+    }
+  }
+
+  Future<int> _fetchApplicationsCount() async {
+    try {
+      final applicationsResponse = await ApiClient.dio.get(
+        'jobs/my-applications?page=1&limit=1',
+      );
+      final applicationsData = _asMap(applicationsResponse.data['data']);
+      final pagination = _asMap(applicationsData['pagination']);
+      return _asInt(pagination['total']);
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  // PROFILE-004: Update skills
+  Future<void> updateSkills(List<String> skills) async {
+    try {
+      await ApiClient.dio.patch(
+        'auth/profile',
+        data: {
+          'skills': skills
+              .map((skill) => skill.trim())
+              .where((skill) => skill.isNotEmpty)
+              .join(','),
+        },
+      );
+    } on DioException catch (e) {
+      throw Exception(_readableError(e, 'Failed to update skills'));
+    } catch (_) {
+      throw Exception('Something went wrong. Please try again.');
+    }
+  }
+
+  Future<void> uploadResume(File resumeFile) async {
+    final fileName = resumeFile.path.split(RegExp(r'[/\\]')).last;
+
+    final formData = FormData.fromMap({
+      'resume': await MultipartFile.fromFile(
+        resumeFile.path,
+        filename: fileName,
+      ),
+    });
+
+    try {
+      await ApiClient.dio.post(
+        'auth/profile/resume',
+        data: formData,
+        options: Options(contentType: 'multipart/form-data'),
+      );
+    } on DioException catch (e) {
+      throw Exception(_readableError(e, 'Failed to upload resume'));
+    } catch (_) {
+      throw Exception('Something went wrong. Please try again.');
+    }
+  }
+
+  Future<void> deleteResume() async {
+    try {
+      await ApiClient.dio.delete('auth/profile/resume');
+    } on DioException catch (e) {
+      throw Exception(_readableError(e, 'Failed to delete resume'));
+    } catch (_) {
+      throw Exception('Something went wrong. Please try again.');
+    }
+  }
+
   Future<String> _display(
     dynamic value,
     Future<String?> Function() fallbackLoader,
@@ -88,18 +178,17 @@ class CandidateProfileService {
     return fallbackValue.isEmpty ? fallback : fallbackValue;
   }
 
-  // PROFILE-004: Update skills
-  Future<void> updateSkills(List<String> skills) async {
-    try {
-      await ApiClient.dio.patch(
-        'auth/profile/skills',
-        data: {
-          'skills': skills.join(', '),
-        },
-      );
-    } catch (e) {
-      throw Exception('Failed to update skills: ${e.toString()}');
+  String _readableError(DioException error, String fallback) {
+    final data = error.response?.data;
+    if (data is Map && data['message'] != null) {
+      final message = data['message'].toString().trim();
+      if (message.isNotEmpty) return message;
     }
+
+    final dioMessage = error.message?.trim();
+    if (dioMessage != null && dioMessage.isNotEmpty) return dioMessage;
+
+    return fallback;
   }
 
   int _asInt(dynamic value) {

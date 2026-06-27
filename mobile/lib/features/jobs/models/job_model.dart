@@ -1,5 +1,6 @@
 class JobModel {
   final String id;
+  final String? jobCode;
   final String title;
   final String? companyName;
   final String? companyLogo;
@@ -18,6 +19,7 @@ class JobModel {
 
   JobModel({
     required this.id,
+    this.jobCode,
     required this.title,
     this.companyName,
     this.companyLogo,
@@ -65,6 +67,7 @@ class JobModel {
 
     return JobModel(
       id: json['id']?.toString() ?? '',
+      jobCode: json['jobCode']?.toString(),
       title: json['title']?.toString() ?? 'Untitled Job',
       companyName: company is Map
           ? company['name']?.toString()
