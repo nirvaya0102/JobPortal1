@@ -5,11 +5,14 @@ import '../models/job_model.dart';
 class CandidateDashboardProvider extends ChangeNotifier {
   static const List<String> categories = [
     'All',
-    'Design',
-    'Technology',
-    'Marketing',
-    'Sales',
     'Remote',
+    'Full Time',
+    'Internship',
+    'Design',
+    'Development',
+    'Marketing',
+    'Engineering',
+    'Finance',
   ];
 
   String _selectedCategory = 'All';
@@ -36,11 +39,16 @@ class CandidateDashboardProvider extends ChangeNotifier {
           '${job.title} ${job.type ?? ''} ${job.companyName ?? ''} ${job.location ?? ''}'
               .toLowerCase();
 
-      if (selected == 'technology') {
+      if (selected == 'development' || selected == 'engineering') {
         return text.contains('engineer') ||
             text.contains('developer') ||
+            text.contains('development') ||
             text.contains('tech') ||
             text.contains('software');
+      }
+
+      if (selected == 'full time') {
+        return text.contains('full-time') || text.contains('full time');
       }
 
       if (selected == 'remote') {
