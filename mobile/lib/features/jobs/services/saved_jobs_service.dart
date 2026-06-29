@@ -71,6 +71,7 @@ class SavedJobsService {
       'salaryMin': job.salaryMin,
       'salaryMax': job.salaryMax,
       'createdAt': job.createdAt,
+      'createdById': job.createdById,
     };
   }
 
@@ -93,6 +94,7 @@ class SavedJobsService {
       salaryMin: int.tryParse('${map['salaryMin'] ?? ''}'),
       salaryMax: int.tryParse('${map['salaryMax'] ?? ''}'),
       createdAt: map['createdAt']?.toString(),
+      createdById: map['createdById']?.toString(),
     );
   }
 }

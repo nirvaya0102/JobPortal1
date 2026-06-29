@@ -5,6 +5,7 @@ import '../../../core/constants/app_radii.dart';
 import '../../../core/constants/app_shadows.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../models/job_model.dart';
+import '../services/saved_jobs_service.dart';
 
 class CandidateFeaturedJobCarousel extends StatefulWidget {
   final List<JobModel> jobs;
@@ -42,7 +43,7 @@ class _CandidateFeaturedJobCarouselState
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          height: 214,
+          height: 286,
           child: PageView.builder(
             controller: _controller,
             itemCount: widget.jobs.length,
@@ -63,7 +64,7 @@ class _CandidateFeaturedJobCarouselState
                   padding: EdgeInsets.only(
                     right: index == widget.jobs.length - 1 ? 0 : 12,
                   ),
-                  child: _FeaturedCard(
+                  child: FeaturedJobCard(
                     job: job,
                     onTap: () => widget.onJobTap(job),
                   ),
@@ -80,7 +81,7 @@ class _CandidateFeaturedJobCarouselState
             (index) => AnimatedContainer(
               duration: const Duration(milliseconds: 220),
               margin: const EdgeInsets.symmetric(horizontal: 3),
-              width: _currentPage == index ? 18 : 7,
+              width: _currentPage == index ? 24 : 7,
               height: 7,
               decoration: BoxDecoration(
                 color: _currentPage == index
@@ -96,24 +97,58 @@ class _CandidateFeaturedJobCarouselState
   }
 }
 
-class _FeaturedCard extends StatelessWidget {
+class FeaturedJobCard extends StatefulWidget {
   final JobModel job;
   final VoidCallback onTap;
 
-  const _FeaturedCard({required this.job, required this.onTap});
+  const FeaturedJobCard({super.key, required this.job, required this.onTap});
+
+  @override
+  State<FeaturedJobCard> createState() => _FeaturedJobCardState();
+}
+
+class _FeaturedJobCardState extends State<FeaturedJobCard> {
+  bool isSaved = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedState();
+  }
+
+  @override
+  void didUpdateWidget(covariant FeaturedJobCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.job.id != widget.job.id) {
+      _loadSavedState();
+    }
+  }
+
+  Future<void> _loadSavedState() async {
+    final saved = await SavedJobsService.isJobSaved(widget.job.id);
+    if (!mounted) return;
+    setState(() => isSaved = saved);
+  }
+
+  Future<void> _toggleSaved() async {
+    final savedNow = await SavedJobsService.toggleSaved(widget.job);
+    if (!mounted) return;
+    setState(() => isSaved = savedNow);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final title = job.title;
+    final job = widget.job;
     final company = _nonEmpty(job.companyName, 'Confidential Company');
-    final salary = _nonEmpty(job.salary, 'Negotiable');
+    final location = _nonEmpty(job.location, 'Remote / Flexible');
+    final salary = _formatSalary(job);
     final type = _nonEmpty(job.type, 'Full-time');
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(24),
-        onTap: onTap,
+        onTap: widget.onTap,
         child: Ink(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(24),
@@ -127,53 +162,38 @@ class _FeaturedCard extends StatelessWidget {
           child: Stack(
             children: [
               Positioned(
-                right: -36,
-                top: -42,
-                child: _DecorCircle(size: 132, opacity: 0.12),
-              ),
-              Positioned(
-                right: 46,
-                bottom: -72,
+                right: -56,
+                top: -58,
                 child: _DecorCircle(size: 150, opacity: 0.08),
               ),
+              Positioned(
+                left: -54,
+                bottom: -68,
+                child: _DecorCircle(size: 130, opacity: 0.06),
+              ),
+              Positioned(
+                right: 22,
+                bottom: 26,
+                child: _DecorCircle(size: 58, opacity: 0.045),
+              ),
               Padding(
-                padding: const EdgeInsets.all(AppSpacing.lg),
+                padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        _FeaturedAvatar(
+                        CompanyAvatar(
                           logoUrl: job.companyLogo,
                           companyName: company,
                         ),
                         const Spacer(),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.16),
-                            borderRadius: BorderRadius.circular(AppRadii.pill),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.18),
-                            ),
-                          ),
-                          child: const Text(
-                            'Featured',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
+                        const _FeaturedBadge(),
                       ],
                     ),
-                    const Spacer(),
+                    const SizedBox(height: AppSpacing.md),
                     Text(
-                      title,
+                      job.title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -194,36 +214,62 @@ class _FeaturedCard extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: AppSpacing.md),
-                    Row(
+                    const SizedBox(height: AppSpacing.sm),
+                    Wrap(
+                      spacing: 7,
+                      runSpacing: 7,
                       children: [
-                        Expanded(
-                          child: _FeaturedPill(
-                            icon: Icons.payments_outlined,
-                            text: salary,
-                          ),
+                        MetaChip(
+                          icon: Icons.location_on_outlined,
+                          text: location,
                         ),
-                        const SizedBox(width: AppSpacing.sm),
-                        _FeaturedPill(
-                          icon: Icons.work_outline_rounded,
-                          text: type,
+                        MetaChip(icon: Icons.work_outline_rounded, text: type),
+                        MetaChip(icon: Icons.payments_outlined, text: salary),
+                        if (job.applicantsCount > 0)
+                          MetaChip(
+                            icon: Icons.groups_outlined,
+                            text:
+                                '${job.applicantsCount} ${job.applicantsCount == 1 ? 'Applicant' : 'Applicants'}',
+                          ),
+                        MetaChip(
+                          icon: Icons.schedule_rounded,
+                          text: _relativeTime(job.createdAt),
                         ),
                       ],
                     ),
-                    const SizedBox(height: AppSpacing.md),
-                    SizedBox(
-                      height: 38,
-                      child: FilledButton(
-                        onPressed: onTap,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: AppColors.primaryBlue,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(AppRadii.md),
+                    const Spacer(),
+                    Row(
+                      children: [
+                        FilledButton.icon(
+                          onPressed: widget.onTap,
+                          iconAlignment: IconAlignment.end,
+                          icon: const Icon(
+                            Icons.arrow_forward_rounded,
+                            size: 17,
+                          ),
+                          label: const Text('Apply Now'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: AppColors.primaryBlue,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 18,
+                              vertical: 12,
+                            ),
+                            minimumSize: const Size(0, 42),
+                            textStyle: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w900,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                AppRadii.pill,
+                              ),
+                            ),
                           ),
                         ),
-                        child: const Text('Apply'),
-                      ),
+                        const Spacer(),
+                        _SaveButton(isSaved: isSaved, onPressed: _toggleSaved),
+                      ],
                     ),
                   ],
                 ),
@@ -236,26 +282,40 @@ class _FeaturedCard extends StatelessWidget {
   }
 }
 
-class _FeaturedAvatar extends StatelessWidget {
+class CompanyAvatar extends StatelessWidget {
   final String? logoUrl;
   final String companyName;
 
-  const _FeaturedAvatar({required this.logoUrl, required this.companyName});
+  const CompanyAvatar({
+    super.key,
+    required this.logoUrl,
+    required this.companyName,
+  });
 
   @override
   Widget build(BuildContext context) {
     final initials = _initials(companyName);
 
     return Container(
-      width: 42,
-      height: 42,
+      width: 46,
+      height: 46,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.16),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.20)),
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          colors: _avatarColors(companyName),
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.30)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 14,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
+      child: ClipOval(
         child: (logoUrl ?? '').trim().isNotEmpty
             ? Image.network(
                 logoUrl!,
@@ -280,29 +340,63 @@ class _Initials extends StatelessWidget {
       style: const TextStyle(
         color: Colors.white,
         fontWeight: FontWeight.w900,
+        fontSize: 14,
       ),
     );
   }
 }
 
-class _FeaturedPill extends StatelessWidget {
-  final IconData icon;
-  final String text;
-
-  const _FeaturedPill({required this.icon, required this.text});
+class _FeaturedBadge extends StatelessWidget {
+  const _FeaturedBadge();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.13),
+        color: Colors.white.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(AppRadii.pill),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.star_rounded, size: 14, color: Color(0xFFFDE68A)),
+          SizedBox(width: 4),
+          Text(
+            'Featured',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+              color: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class MetaChip extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const MetaChip({super.key, required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 154),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: Colors.white),
+          Icon(icon, size: 13, color: Colors.white.withValues(alpha: 0.92)),
           const SizedBox(width: 5),
           Flexible(
             child: Text(
@@ -311,12 +405,41 @@ class _FeaturedPill extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: FontWeight.w800,
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SaveButton extends StatelessWidget {
+  final bool isSaved;
+  final VoidCallback onPressed;
+
+  const _SaveButton({required this.isSaved, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 180),
+      child: IconButton(
+        key: ValueKey(isSaved),
+        tooltip: isSaved ? 'Unsave job' : 'Save job',
+        onPressed: onPressed,
+        style: IconButton.styleFrom(
+          backgroundColor: Colors.white.withValues(alpha: 0.14),
+          foregroundColor: Colors.white,
+          side: BorderSide(color: Colors.white.withValues(alpha: 0.18)),
+          fixedSize: const Size(42, 42),
+        ),
+        icon: Icon(
+          isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+          size: 21,
+        ),
       ),
     );
   }
@@ -382,4 +505,60 @@ String _initials(String value) {
   if (parts.length == 1) return parts.first.characters.first.toUpperCase();
   return '${parts.first.characters.first}${parts.last.characters.first}'
       .toUpperCase();
+}
+
+List<Color> _avatarColors(String value) {
+  final palettes = [
+    [const Color(0xFF2563EB), const Color(0xFF38BDF8)],
+    [const Color(0xFF047857), const Color(0xFF34D399)],
+    [const Color(0xFF4338CA), const Color(0xFF818CF8)],
+    [const Color(0xFF0F766E), const Color(0xFF5EEAD4)],
+    [const Color(0xFFBE123C), const Color(0xFFFB7185)],
+  ];
+  final index =
+      value.codeUnits.fold<int>(0, (sum, unit) => sum + unit) % palettes.length;
+  return palettes[index];
+}
+
+String _formatSalary(JobModel job) {
+  if (job.salaryMin != null && job.salaryMax != null) {
+    return 'NPR ${_compactCurrency(job.salaryMin!)} – ${_compactCurrency(job.salaryMax!)}';
+  }
+  if (job.salaryMin != null) {
+    return 'From NPR ${_compactCurrency(job.salaryMin!)}';
+  }
+  if (job.salaryMax != null) {
+    return 'Up to NPR ${_compactCurrency(job.salaryMax!)}';
+  }
+
+  final salary = job.salary?.trim() ?? '';
+  return salary.isEmpty ? 'Negotiable' : salary;
+}
+
+String _compactCurrency(int amount) {
+  if (amount >= 1000 && amount % 1000 == 0) {
+    return '${amount ~/ 1000}k';
+  }
+  if (amount >= 1000) {
+    final value = amount / 1000;
+    final text = value.toStringAsFixed(value % 1 == 0 ? 0 : 1);
+    return '${text}k';
+  }
+  return amount.toString();
+}
+
+String _relativeTime(String? rawDate) {
+  if (rawDate == null || rawDate.trim().isEmpty) return 'Recently';
+  final date = DateTime.tryParse(rawDate)?.toLocal();
+  if (date == null) return 'Recently';
+
+  final difference = DateTime.now().difference(date);
+  if (difference.inDays <= 0) return 'Today';
+  if (difference.inDays == 1) return 'Yesterday';
+  if (difference.inDays < 7) return '${difference.inDays} days ago';
+  if (difference.inDays < 14) return '1 week ago';
+  if (difference.inDays < 30) {
+    return '${(difference.inDays / 7).floor()} weeks ago';
+  }
+  return '${(difference.inDays / 30).floor()} months ago';
 }

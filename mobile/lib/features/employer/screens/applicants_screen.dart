@@ -7,6 +7,8 @@ import '../../../core/constants/app_shadows.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/section_title.dart';
+import '../../chat/screens/chat_room_screen.dart';
+import '../../chat/services/stream_chat_service.dart';
 import '../../jobs/models/application_model.dart';
 import '../../jobs/services/job_service.dart';
 
@@ -79,6 +81,7 @@ class _ApplicantsScreenState extends State<ApplicantsScreen> {
             appliedAt: oldApp.appliedAt,
             candidate: oldApp.candidate,
             resumeFileName: oldApp.resumeFileName,
+            job: oldApp.job,
           );
         }
       });
@@ -93,6 +96,41 @@ class _ApplicantsScreenState extends State<ApplicantsScreen> {
           const SnackBar(content: Text('Something went wrong. Please try again.')),
         );
       }
+    }
+  }
+
+  Future<void> openCandidateChat(ApplicationModel application) async {
+    if (application.candidateId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Candidate chat is not available.')),
+      );
+      return;
+    }
+
+    try {
+      await JobPortalStreamChatService.instance.connect();
+      final channel = await JobPortalStreamChatService.instance
+          .createOneToOneChannel(
+        targetUserId: application.candidateId,
+        jobId: widget.jobId,
+      );
+
+      if (!mounted) return;
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChatRoomScreen(
+            channelId: channel.channelId,
+            channelType: channel.channelType,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
     }
   }
 
@@ -233,6 +271,7 @@ class _ApplicantsScreenState extends State<ApplicantsScreen> {
                             statusBg: _statusBg,
                             statusText: _statusText,
                             onViewResume: viewResume,
+                            onMessageCandidate: openCandidateChat,
                             onUpdateStatus: updateStatus,
                             formatDate: _formatAppliedDate,
                           ),
@@ -243,6 +282,7 @@ class _ApplicantsScreenState extends State<ApplicantsScreen> {
                             statusBg: _statusBg,
                             statusText: _statusText,
                             onViewResume: viewResume,
+                            onMessageCandidate: openCandidateChat,
                             onUpdateStatus: updateStatus,
                             formatDate: _formatAppliedDate,
                           ),
@@ -253,6 +293,7 @@ class _ApplicantsScreenState extends State<ApplicantsScreen> {
                             statusBg: _statusBg,
                             statusText: _statusText,
                             onViewResume: viewResume,
+                            onMessageCandidate: openCandidateChat,
                             onUpdateStatus: updateStatus,
                             formatDate: _formatAppliedDate,
                           ),
@@ -263,6 +304,7 @@ class _ApplicantsScreenState extends State<ApplicantsScreen> {
                             statusBg: _statusBg,
                             statusText: _statusText,
                             onViewResume: viewResume,
+                            onMessageCandidate: openCandidateChat,
                             onUpdateStatus: updateStatus,
                             formatDate: _formatAppliedDate,
                           ),
@@ -280,6 +322,7 @@ class _ApplicantSection extends StatelessWidget {
   final Color Function(String) statusBg;
   final Color Function(String) statusText;
   final Future<void> Function(String) onViewResume;
+  final Future<void> Function(ApplicationModel) onMessageCandidate;
   final Future<void> Function(String, String) onUpdateStatus;
   final String Function(String) formatDate;
 
@@ -290,6 +333,7 @@ class _ApplicantSection extends StatelessWidget {
     required this.statusBg,
     required this.statusText,
     required this.onViewResume,
+    required this.onMessageCandidate,
     required this.onUpdateStatus,
     required this.formatDate,
   });
@@ -391,6 +435,12 @@ class _ApplicantSection extends StatelessWidget {
                           onPressed: () => onViewResume(app.id),
                           leadingIcon: Icons.description_outlined,
                           expanded: false,
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        OutlinedButton.icon(
+                          onPressed: () => onMessageCandidate(app),
+                          icon: const Icon(Icons.chat_bubble_outline_rounded),
+                          label: const Text('Message'),
                         ),
                         const Spacer(),
                         DropdownButton<String>(

@@ -877,7 +877,7 @@ class _FeaturedSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const SizedBox(
-      height: 214,
+      height: 286,
       child: Row(
         children: [
           Expanded(child: _SkeletonBox(radius: 24)),

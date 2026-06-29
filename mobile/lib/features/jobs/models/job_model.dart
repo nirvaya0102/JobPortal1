@@ -16,6 +16,7 @@ class JobModel {
   final int? salaryMin;
   final int? salaryMax;
   final String? createdAt;
+  final String? createdById;
 
   JobModel({
     required this.id,
@@ -35,6 +36,7 @@ class JobModel {
     this.salaryMin,
     this.salaryMax,
     this.createdAt,
+    this.createdById,
   });
 
   factory JobModel.fromJson(Map<String, dynamic> json) {
@@ -88,6 +90,7 @@ class JobModel {
       salaryMin: salaryMin,
       salaryMax: salaryMax,
       createdAt: json['createdAt']?.toString(),
+      createdById: json['createdById']?.toString(),
     );
   }
 }

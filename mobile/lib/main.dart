@@ -3,6 +3,7 @@ import 'core/services/notification_service.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/screens/auth_check_screen.dart';
 import 'features/auth/screens/login_screen.dart';
+import 'features/chat/screens/chat_list_screen.dart';
 import 'features/jobs/screens/candidate_main_screen.dart';
 import 'firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -36,6 +37,7 @@ class MyApp extends StatelessWidget {
         '/auth-check': (context) => const AuthCheckScreen(),
         '/login': (context) => const LoginScreen(),
         '/home': (context) => const CandidateMainScreen(),
+        '/chats': (context) => const ChatListScreen(),
       },
     );
   }

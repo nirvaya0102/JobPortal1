@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_radii.dart';
 import '../../../core/constants/app_shadows.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/candidate_footer.dart';
 import '../../applications/screens/apply_job_screen.dart';
+import '../../chat/screens/chat_room_screen.dart';
+import '../../chat/services/stream_chat_service.dart';
 import '../models/job_model.dart';
 import '../services/job_service.dart';
 import '../services/saved_jobs_service.dart';
@@ -68,6 +69,7 @@ List<String> _extractSkills(String description) {
 }
   JobModel? job;
   bool loading = true;
+  bool openingChat = false;
   bool isSaved = false;
   String? errorMessage;
 
@@ -124,6 +126,51 @@ List<String> _extractSkills(String description) {
         ),
       ),
     );
+  }
+
+  Future<void> _openEmployerChat() async {
+    final currentJob = job;
+    final employerId = currentJob?.createdById;
+
+    if (currentJob == null || employerId == null || employerId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Employer chat is not available for this job yet.'),
+        ),
+      );
+      return;
+    }
+
+    try {
+      setState(() => openingChat = true);
+      await JobPortalStreamChatService.instance.connect();
+      final channel = await JobPortalStreamChatService.instance
+          .createOneToOneChannel(
+        targetUserId: employerId,
+        jobId: currentJob.id,
+      );
+
+      if (!mounted) return;
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChatRoomScreen(
+            channelId: channel.channelId,
+            channelType: channel.channelType,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => openingChat = false);
+    }
   }
 
   Future<void> _toggleSaveJob() async {
@@ -489,6 +536,30 @@ List<String> _extractSkills(String description) {
 
                   const SizedBox(width: AppSpacing.sm),
 
+                  SizedBox(
+                    width: 52,
+                    height: 52,
+                    child: OutlinedButton(
+                      onPressed: openingChat ? null : _openEmployerChat,
+                      style: OutlinedButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        side: const BorderSide(color: AppColors.borderLight),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: openingChat
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.chat_bubble_outline_rounded),
+                    ),
+                  ),
+
+                  const SizedBox(width: AppSpacing.sm),
+
                   Expanded(
                     child: Container(
                       height: 54,
@@ -496,7 +567,7 @@ List<String> _extractSkills(String description) {
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.primary.withOpacity(.35),
+                            color: AppColors.primary.withValues(alpha: .35),
                             blurRadius: 18,
                             offset: const Offset(0, 8),
                           ),
@@ -555,7 +626,7 @@ class _HeroJobCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(26),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF070B66).withOpacity(.25),
+            color: const Color(0xFF070B66).withValues(alpha: .25),
             blurRadius: 24,
             offset: const Offset(0, 12),
           ),
@@ -571,7 +642,7 @@ class _HeroJobCard extends StatelessWidget {
               height: 110,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white.withOpacity(.08),
+                color: Colors.white.withValues(alpha: .08),
               ),
             ),
           ),
@@ -583,7 +654,7 @@ class _HeroJobCard extends StatelessWidget {
               height: 130,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white.withOpacity(.06),
+                color: Colors.white.withValues(alpha: .06),
               ),
             ),
           ),
@@ -612,10 +683,10 @@ class _HeroJobCard extends StatelessWidget {
                       vertical: 7,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(.15),
+                      color: Colors.white.withValues(alpha: .15),
                       borderRadius: BorderRadius.circular(100),
                       border: Border.all(
-                        color: Colors.white.withOpacity(.25),
+                        color: Colors.white.withValues(alpha: .25),
                       ),
                     ),
                     child: const Text(
@@ -699,10 +770,10 @@ class _HeroChip extends StatelessWidget {
         vertical: 8,
       ),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(.15),
+        color: Colors.white.withValues(alpha: .15),
         borderRadius: BorderRadius.circular(100),
         border: Border.all(
-          color: Colors.white.withOpacity(.22),
+          color: Colors.white.withValues(alpha: .22),
         ),
       ),
       child: Row(
@@ -745,7 +816,7 @@ class _SmallInfoCard extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE8EAF3)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(.04),
+            color: Colors.black.withValues(alpha: .04),
             blurRadius: 14,
             offset: const Offset(0, 8),
           ),
@@ -823,38 +894,6 @@ class _SkillChip extends StatelessWidget {
   }
 }
 
-class _BenefitRow extends StatelessWidget {
-  final String text;
-
-  const _BenefitRow(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.done_rounded,
-            size: 17,
-            color: Color(0xFF22C55E),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Text(
-              text,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: const Color(0xFF4A4D68),
-                    height: 1.4,
-                  ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _DetailCard extends StatelessWidget {
   final String title;
   final IconData icon;
@@ -877,7 +916,7 @@ class _DetailCard extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE8EAF3)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(.04),
+            color: Colors.black.withValues(alpha: .04),
             blurRadius: 14,
             offset: const Offset(0, 8),
           ),
