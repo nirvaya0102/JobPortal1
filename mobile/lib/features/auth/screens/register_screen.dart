@@ -20,6 +20,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   final companyNameController = TextEditingController();
   final companyLocationController = TextEditingController();
+  final adminRegistrationCodeController = TextEditingController();
 
   bool loading = false;
   bool showPassword = false;
@@ -37,6 +38,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     final companyName = companyNameController.text.trim();
     final companyLocation = companyLocationController.text.trim();
+    final adminRegistrationCode = adminRegistrationCodeController.text.trim();
 
 
 
@@ -48,6 +50,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
         });
         return;
       }
+    }
+
+    if (role == 'ADMIN' && adminRegistrationCode.isEmpty) {
+      setState(() {
+        errorMessage = 'Admin registration code is required.';
+      });
+      return;
     }
 
     if (name.isEmpty || email.isEmpty || phone.isEmpty || password.isEmpty) {
@@ -106,6 +115,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         role: role,
         companyName: role == 'EMPLOYER' ? companyName : null,
         companyLocation: role == 'EMPLOYER' ? companyLocation : null,
+        adminRegistrationCode:
+            role == 'ADMIN' ? adminRegistrationCode : null,
       );
 
       if (!mounted) return;
@@ -144,6 +155,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     confirmPasswordController.dispose();
     companyNameController.dispose();
     companyLocationController.dispose();
+    adminRegistrationCodeController.dispose();
     super.dispose();
   }
 
@@ -262,6 +274,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     value: 'EMPLOYER',
                     child: Text('Employer'),
                   ),
+                  DropdownMenuItem(
+                    value: 'ADMIN',
+                    child: Text('Admin'),
+                  ),
                 ],
                 onChanged: (value) {
                   if (value != null) {
@@ -289,6 +305,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   controller: companyLocationController,
                   decoration: const InputDecoration(
                     labelText: 'Company Location',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+
+              if (role == 'ADMIN') ...[
+                const SizedBox(height: 16),
+                TextField(
+                  controller: adminRegistrationCodeController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Admin Registration Code',
                     border: OutlineInputBorder(),
                   ),
                 ),

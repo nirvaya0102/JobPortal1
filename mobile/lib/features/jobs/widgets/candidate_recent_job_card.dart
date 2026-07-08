@@ -57,7 +57,7 @@ class _CandidateRecentJobCardState extends State<CandidateRecentJobCard> {
     final location = _nonEmpty(job.location, 'Remote / Flexible');
     final type = _nonEmpty(job.type, 'Full-time');
     final salary = _nonEmpty(job.salary, 'Negotiable');
-    final status = _nonEmpty(job.status, 'OPEN');
+    final status = _nonEmpty(job.status, 'APPROVED');
 
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.98, end: 1),

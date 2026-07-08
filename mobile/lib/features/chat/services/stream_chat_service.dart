@@ -36,10 +36,7 @@ class StreamChannelData {
   final String channelId;
   final String channelType;
 
-  const StreamChannelData({
-    required this.channelId,
-    required this.channelType,
-  });
+  const StreamChannelData({required this.channelId, required this.channelType});
 
   factory StreamChannelData.fromJson(Map<String, dynamic> json) {
     return StreamChannelData(
@@ -74,7 +71,9 @@ class JobPortalStreamChatService {
     final tokenData = await _fetchToken();
 
     final existingClient = _client;
-    if (existingClient != null && _tokenData?.userId == tokenData.userId) {
+    if (existingClient != null &&
+        _tokenData?.userId == tokenData.userId &&
+        _tokenData?.apiKey == tokenData.apiKey) {
       return existingClient;
     }
 
@@ -88,11 +87,7 @@ class JobPortalStreamChatService {
     );
 
     await nextClient.connectUser(
-      User(
-        id: tokenData.userId,
-        name: tokenData.name,
-        role: tokenData.role,
-      ),
+      User(id: tokenData.userId, name: tokenData.name, role: tokenData.role),
       tokenData.token,
     );
 
@@ -117,7 +112,11 @@ class JobPortalStreamChatService {
       final data = response.data['data'] is Map
           ? Map<String, dynamic>.from(response.data['data'])
           : <String, dynamic>{};
-      return StreamChannelData.fromJson(data);
+      final channelData = StreamChannelData.fromJson(data);
+      if (channelData.channelId.isEmpty || channelData.channelType.isEmpty) {
+        throw Exception('Invalid Stream channel response.');
+      }
+      return channelData;
     } on DioException catch (e) {
       throw Exception(_readableError(e, 'Failed to create chat.'));
     } catch (_) {
@@ -133,6 +132,16 @@ class JobPortalStreamChatService {
     final channel = chatClient.channel(channelType, id: channelId);
     await channel.watch();
     return channel;
+  }
+
+  Future<void> disconnect() async {
+    final existingClient = _client;
+    _client = null;
+    _tokenData = null;
+
+    if (existingClient != null) {
+      await existingClient.disconnectUser();
+    }
   }
 
   Future<StreamTokenData> _fetchToken() async {

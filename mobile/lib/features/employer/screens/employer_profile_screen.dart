@@ -87,7 +87,9 @@ class _EmployerProfileScreenState extends State<EmployerProfileScreen> {
                       children: [
                         CircleAvatar(
                           radius: 44,
-                          backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                          backgroundColor: AppColors.primary.withValues(
+                            alpha: 0.1,
+                          ),
                           child: Text(
                             _name.isNotEmpty ? _name[0].toUpperCase() : 'E',
                             style: theme.textTheme.headlineMedium?.copyWith(
@@ -111,7 +113,10 @@ class _EmployerProfileScreenState extends State<EmployerProfileScreen> {
                           ),
                         ),
                         const SizedBox(height: AppSpacing.md),
-                        _InfoRow(icon: Icons.location_on_outlined, value: _location),
+                        _InfoRow(
+                          icon: Icons.location_on_outlined,
+                          value: _location,
+                        ),
                         const SizedBox(height: AppSpacing.sm),
                         _InfoRow(icon: Icons.email_outlined, value: _email),
                       ],
@@ -121,23 +126,14 @@ class _EmployerProfileScreenState extends State<EmployerProfileScreen> {
                   const SectionTitle(title: 'Preferences'),
                   const SizedBox(height: AppSpacing.md),
                   _ActionTile(
-                    icon: Icons.notifications_outlined,
-                    title: 'Notification Preferences',
-                    subtitle: 'Job alerts and applicant updates',
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Notification settings coming soon.')),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  _ActionTile(
                     icon: Icons.security_outlined,
                     title: 'Privacy & Security',
                     subtitle: 'Password and account controls',
                     onTap: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Privacy controls coming soon.')),
+                        const SnackBar(
+                          content: Text('Privacy controls coming soon.'),
+                        ),
                       );
                     },
                   ),
@@ -148,7 +144,9 @@ class _EmployerProfileScreenState extends State<EmployerProfileScreen> {
                     subtitle: 'Help center and legal',
                     onTap: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Support center coming soon.')),
+                        const SnackBar(
+                          content: Text('Support center coming soon.'),
+                        ),
                       );
                     },
                   ),
@@ -243,7 +241,10 @@ class _ActionTile extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: AppColors.textSecondary,
+            ),
           ],
         ),
       ),

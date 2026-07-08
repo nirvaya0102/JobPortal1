@@ -138,7 +138,7 @@ class _EmployerDashboardScreenState extends State<EmployerDashboardScreen> {
               final jobs = snapshot.data ?? <JobModel>[];
               final activeJobs = jobs
                   .where(
-                    (job) => job.status == 'OPEN' || job.status == 'ACTIVE',
+                    (job) => job.status == 'APPROVED',
                   )
                   .length;
               final totalApplicants = jobs.fold<int>(
@@ -286,6 +286,7 @@ class _EmployerDashboardScreenState extends State<EmployerDashboardScreen> {
                                   applicantSummary:
                                       '${job.applicantsCount} applicants',
                                   status: job.status,
+                                  rejectionReason: job.rejectionReason,
                                   onTapApplicants: () => _openApplicants(job),
                                 );
                               },

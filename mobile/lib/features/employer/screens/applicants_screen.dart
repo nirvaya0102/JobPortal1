@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_radii.dart';
@@ -11,6 +10,7 @@ import '../../chat/screens/chat_room_screen.dart';
 import '../../chat/services/stream_chat_service.dart';
 import '../../jobs/models/application_model.dart';
 import '../../jobs/services/job_service.dart';
+import 'resume_preview_screen.dart';
 
 class ApplicantsScreen extends StatefulWidget {
   final String jobId;
@@ -32,6 +32,9 @@ class _ApplicantsScreenState extends State<ApplicantsScreen> {
   List<ApplicationModel> applicants = [];
   bool loading = true;
   String? errorMessage;
+  final Set<String> openingResumeIds = {};
+  final Set<String> openingChatIds = {};
+  final Set<String> updatingStatusIds = {};
 
   @override
   void initState() {
@@ -80,7 +83,9 @@ class _ApplicantsScreenState extends State<ApplicantsScreen> {
             status: newStatus,
             appliedAt: oldApp.appliedAt,
             candidate: oldApp.candidate,
+            resumeUrl: oldApp.resumeUrl,
             resumeFileName: oldApp.resumeFileName,
+            resumeFileType: oldApp.resumeFileType,
             job: oldApp.job,
           );
         }
@@ -101,13 +106,12 @@ class _ApplicantsScreenState extends State<ApplicantsScreen> {
 
   Future<void> openCandidateChat(ApplicationModel application) async {
     if (application.candidateId.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Candidate chat is not available.')),
-      );
+      _showSnack('Candidate chat is not available.');
       return;
     }
 
     try {
+      setState(() => openingChatIds.add(application.id));
       await JobPortalStreamChatService.instance.connect();
       final channel = await JobPortalStreamChatService.instance
           .createOneToOneChannel(
@@ -128,31 +132,102 @@ class _ApplicantsScreenState extends State<ApplicantsScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-      );
+      _showSnack(_chatError(e));
+    } finally {
+      if (mounted) {
+        setState(() => openingChatIds.remove(application.id));
+      }
     }
   }
 
-  Future<void> viewResume(String applicationId) async {
+  Future<void> viewResume(ApplicationModel application) async {
     try {
-      final url = await jobService.getApplicationResume(widget.jobId, applicationId);
+      setState(() => openingResumeIds.add(application.id));
+      var url = application.resumeUrl?.trim() ?? application.candidate.resumeUrl?.trim() ?? '';
+
       if (url.isEmpty) {
-        throw Exception('empty');
+        url = await jobService.getApplicationResume(widget.jobId, application.id);
       }
-      final uri = Uri.parse(url);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
+
+      if (url.trim().isEmpty) {
+        _showSnack('No CV uploaded by this candidate.');
+        return;
+      }
+
+      final uri = Uri.tryParse(url);
+      if (uri == null ||
+          !uri.hasScheme ||
+          !(uri.scheme == 'http' || uri.scheme == 'https')) {
+        _showSnack('Invalid CV URL.');
+        return;
+      }
+
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ResumePreviewScreen(
+            resumeUrl: url,
+            candidateName: application.candidate.name.trim().isEmpty
+                ? 'Candidate'
+                : application.candidate.name.trim(),
+            fileName: application.resumeFileName ??
+                application.candidate.resumeFileName,
+            fileType: application.resumeFileType ??
+                application.candidate.resumeFileType,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final raw = e.toString().toLowerCase();
+      if (raw.contains('resume not found') || raw.contains('not found')) {
+        _showSnack('No CV uploaded by this candidate.');
+      } else if (raw.contains('401') || raw.contains('unauthorized')) {
+        _showSnack('Your session has expired. Please log in again.');
+      } else if (raw.contains('socket') || raw.contains('network')) {
+        _showSnack('No internet connection.');
       } else {
-        throw Exception('launch failed');
+        _showSnack('Unable to open CV right now.');
       }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Unable to open resume right now.')),
-        );
-      }
+    } finally {
+      if (mounted) setState(() => openingResumeIds.remove(application.id));
     }
+  }
+
+  Future<void> _updateStatusWithLoading(
+    String applicationId,
+    String newStatus,
+  ) async {
+    setState(() => updatingStatusIds.add(applicationId));
+    try {
+      await updateStatus(applicationId, newStatus);
+    } finally {
+      if (mounted) setState(() => updatingStatusIds.remove(applicationId));
+    }
+  }
+
+  String _chatError(Object error) {
+    final message = error.toString().replaceFirst('Exception: ', '');
+    final lower = message.toLowerCase();
+    if (lower.contains('token')) return 'Chat token missing.';
+    if (lower.contains('401') || lower.contains('unauthorized')) {
+      return 'Your session has expired. Please log in again.';
+    }
+    if (lower.contains('socket') || lower.contains('network')) {
+      return 'No internet connection.';
+    }
+    if (lower.contains('stream') || lower.contains('chat')) {
+      return message;
+    }
+    return 'Channel creation failed.';
+  }
+
+  void _showSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   String _friendlyError(String raw) {
@@ -272,8 +347,11 @@ class _ApplicantsScreenState extends State<ApplicantsScreen> {
                             statusText: _statusText,
                             onViewResume: viewResume,
                             onMessageCandidate: openCandidateChat,
-                            onUpdateStatus: updateStatus,
+                            onUpdateStatus: _updateStatusWithLoading,
                             formatDate: _formatAppliedDate,
+                            openingResumeIds: openingResumeIds,
+                            openingChatIds: openingChatIds,
+                            updatingStatusIds: updatingStatusIds,
                           ),
                           _ApplicantSection(
                             title: 'Reviewed',
@@ -283,8 +361,11 @@ class _ApplicantsScreenState extends State<ApplicantsScreen> {
                             statusText: _statusText,
                             onViewResume: viewResume,
                             onMessageCandidate: openCandidateChat,
-                            onUpdateStatus: updateStatus,
+                            onUpdateStatus: _updateStatusWithLoading,
                             formatDate: _formatAppliedDate,
+                            openingResumeIds: openingResumeIds,
+                            openingChatIds: openingChatIds,
+                            updatingStatusIds: updatingStatusIds,
                           ),
                           _ApplicantSection(
                             title: 'Shortlisted',
@@ -294,8 +375,11 @@ class _ApplicantsScreenState extends State<ApplicantsScreen> {
                             statusText: _statusText,
                             onViewResume: viewResume,
                             onMessageCandidate: openCandidateChat,
-                            onUpdateStatus: updateStatus,
+                            onUpdateStatus: _updateStatusWithLoading,
                             formatDate: _formatAppliedDate,
+                            openingResumeIds: openingResumeIds,
+                            openingChatIds: openingChatIds,
+                            updatingStatusIds: updatingStatusIds,
                           ),
                           _ApplicantSection(
                             title: 'Rejected',
@@ -305,8 +389,11 @@ class _ApplicantsScreenState extends State<ApplicantsScreen> {
                             statusText: _statusText,
                             onViewResume: viewResume,
                             onMessageCandidate: openCandidateChat,
-                            onUpdateStatus: updateStatus,
+                            onUpdateStatus: _updateStatusWithLoading,
                             formatDate: _formatAppliedDate,
+                            openingResumeIds: openingResumeIds,
+                            openingChatIds: openingChatIds,
+                            updatingStatusIds: updatingStatusIds,
                           ),
                         ],
                       ),
@@ -321,10 +408,13 @@ class _ApplicantSection extends StatelessWidget {
   final List<ApplicationModel> items;
   final Color Function(String) statusBg;
   final Color Function(String) statusText;
-  final Future<void> Function(String) onViewResume;
+  final Future<void> Function(ApplicationModel) onViewResume;
   final Future<void> Function(ApplicationModel) onMessageCandidate;
   final Future<void> Function(String, String) onUpdateStatus;
   final String Function(String) formatDate;
+  final Set<String> openingResumeIds;
+  final Set<String> openingChatIds;
+  final Set<String> updatingStatusIds;
 
   const _ApplicantSection({
     required this.title,
@@ -336,6 +426,9 @@ class _ApplicantSection extends StatelessWidget {
     required this.onMessageCandidate,
     required this.onUpdateStatus,
     required this.formatDate,
+    required this.openingResumeIds,
+    required this.openingChatIds,
+    required this.updatingStatusIds,
   });
 
   @override
@@ -344,8 +437,6 @@ class _ApplicantSection extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final theme = Theme.of(context);
-
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.xl),
       child: Column(
@@ -353,124 +444,493 @@ class _ApplicantSection extends StatelessWidget {
         children: [
           SectionTitle(title: '$title ($count)'),
           const SizedBox(height: AppSpacing.md),
-          ...items.map((app) {
-            return Container(
-              margin: const EdgeInsets.only(bottom: AppSpacing.md),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(AppRadii.lg),
-                border: Border.all(color: AppColors.borderLight),
-                boxShadow: AppShadows.soft(),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            app.candidate.name,
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                        Chip(
-                          label: Text(
-                            app.status,
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: statusText(app.status),
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          backgroundColor: statusBg(app.status),
-                          side: BorderSide.none,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      app.applicantEmail?.trim().isNotEmpty == true
-                          ? app.applicantEmail!
-                          : app.candidate.email,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    if ((app.applicantPhone ?? app.candidate.phone).trim().isNotEmpty) ...[
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        app.applicantPhone?.trim().isNotEmpty == true
-                            ? app.applicantPhone!
-                            : app.candidate.phone,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      'Applied on ${formatDate(app.appliedAt)}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    if ((app.coverLetter ?? '').trim().isNotEmpty) ...[
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        app.coverLetter!,
-                        style: theme.textTheme.bodyMedium,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                    const SizedBox(height: AppSpacing.md),
-                    Row(
-                      children: [
-                        AppButton(
-                          label: 'View CV',
-                          onPressed: () => onViewResume(app.id),
-                          leadingIcon: Icons.description_outlined,
-                          expanded: false,
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        OutlinedButton.icon(
-                          onPressed: () => onMessageCandidate(app),
-                          icon: const Icon(Icons.chat_bubble_outline_rounded),
-                          label: const Text('Message'),
-                        ),
-                        const Spacer(),
-                        DropdownButton<String>(
-                          value: app.status,
-                          underline: const SizedBox.shrink(),
-                          icon: const Icon(
-                            Icons.arrow_drop_down,
-                            color: AppColors.primary,
-                          ),
-                          items: const [
-                            DropdownMenuItem(value: 'PENDING', child: Text('Pending')),
-                            DropdownMenuItem(value: 'REVIEWED', child: Text('Reviewed')),
-                            DropdownMenuItem(value: 'SHORTLISTED', child: Text('Shortlisted')),
-                            DropdownMenuItem(value: 'REJECTED', child: Text('Rejected')),
-                          ],
-                          onChanged: (newStatus) {
-                            if (newStatus != null && newStatus != app.status) {
-                              onUpdateStatus(app.id, newStatus);
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }),
+          ...items.map(
+            (app) => _ApplicantCard(
+              application: app,
+              statusBg: statusBg,
+              statusText: statusText,
+              onViewResume: onViewResume,
+              onMessageCandidate: onMessageCandidate,
+              onUpdateStatus: onUpdateStatus,
+              formatDate: formatDate,
+              openingResume: openingResumeIds.contains(app.id),
+              openingChat: openingChatIds.contains(app.id),
+              updatingStatus: updatingStatusIds.contains(app.id),
+            ),
+          ),
         ],
       ),
     );
   }
+}
+
+class _ApplicantCard extends StatelessWidget {
+  final ApplicationModel application;
+  final Color Function(String) statusBg;
+  final Color Function(String) statusText;
+  final Future<void> Function(ApplicationModel) onViewResume;
+  final Future<void> Function(ApplicationModel) onMessageCandidate;
+  final Future<void> Function(String, String) onUpdateStatus;
+  final String Function(String) formatDate;
+  final bool openingResume;
+  final bool openingChat;
+  final bool updatingStatus;
+
+  const _ApplicantCard({
+    required this.application,
+    required this.statusBg,
+    required this.statusText,
+    required this.onViewResume,
+    required this.onMessageCandidate,
+    required this.onUpdateStatus,
+    required this.formatDate,
+    required this.openingResume,
+    required this.openingChat,
+    required this.updatingStatus,
+  });
+
+  String get _name {
+    final value = application.candidate.name.trim();
+    return value.isEmpty ? 'Candidate' : value;
+  }
+
+  String get _email {
+    final applicantEmail = application.applicantEmail?.trim();
+    if (applicantEmail != null && applicantEmail.isNotEmpty) {
+      return applicantEmail;
+    }
+    return application.candidate.email.trim().isEmpty
+        ? 'Email not provided'
+        : application.candidate.email.trim();
+  }
+
+  String get _phone {
+    final applicantPhone = application.applicantPhone?.trim();
+    if (applicantPhone != null && applicantPhone.isNotEmpty) {
+      return applicantPhone;
+    }
+    return application.candidate.phone.trim().isEmpty
+        ? 'Phone not provided'
+        : application.candidate.phone.trim();
+  }
+
+  bool get _hasResume {
+    final applicationResume = application.resumeUrl?.trim();
+    final profileResume = application.candidate.resumeUrl?.trim();
+    return (applicationResume != null && applicationResume.isNotEmpty) ||
+        (profileResume != null && profileResume.isNotEmpty) ||
+        (application.resumeFileName?.trim().isNotEmpty ?? false) ||
+        (application.candidate.resumeFileName?.trim().isNotEmpty ?? false);
+  }
+
+  String get _resumeLabel {
+    final fileName = application.resumeFileName?.trim();
+    if (fileName != null && fileName.isNotEmpty) return fileName;
+    final profileFileName = application.candidate.resumeFileName?.trim();
+    if (profileFileName != null && profileFileName.isNotEmpty) {
+      return profileFileName;
+    }
+    return _hasResume ? 'CV available' : 'No CV uploaded';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final coverLetter = application.coverLetter?.trim() ?? '';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.md),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(color: AppColors.borderLight),
+        boxShadow: AppShadows.soft(),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _InitialsAvatar(name: _name),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Wrap(
+                        spacing: AppSpacing.sm,
+                        runSpacing: AppSpacing.xs,
+                        children: [
+                          _MetaChip(
+                            icon: Icons.email_outlined,
+                            label: _email,
+                          ),
+                          _MetaChip(
+                            icon: Icons.phone_outlined,
+                            label: _phone,
+                          ),
+                          _MetaChip(
+                            icon: Icons.calendar_today_outlined,
+                            label: 'Applied ${formatDate(application.appliedAt)}',
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                _StatusChip(
+                  status: application.status,
+                  bg: statusBg(application.status),
+                  textColor: statusText(application.status),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFF),
+                borderRadius: BorderRadius.circular(AppRadii.md),
+                border: Border.all(color: AppColors.borderLight),
+              ),
+              child: Text(
+                coverLetter.isEmpty
+                    ? 'No cover letter provided.'
+                    : coverLetter,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: coverLetter.isEmpty
+                      ? AppColors.textSecondary
+                      : AppColors.textPrimary,
+                  height: 1.4,
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Row(
+              children: [
+                Icon(
+                  _hasResume
+                      ? Icons.description_outlined
+                      : Icons.description_outlined,
+                  size: 18,
+                  color: _hasResume ? AppColors.primary : AppColors.textHint,
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: Text(
+                    _resumeLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: _hasResume
+                          ? AppColors.primary
+                          : AppColors.textSecondary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxWidth < 390;
+                final viewCvButton = _ActionButton(
+                  label: openingResume ? 'Opening...' : 'View CV',
+                  icon: Icons.description_outlined,
+                  loading: openingResume,
+                  onPressed: openingResume
+                      ? null
+                      : () => onViewResume(application),
+                );
+                final messageButton = _ActionButton(
+                  label: openingChat ? 'Opening...' : 'Message',
+                  icon: Icons.chat_bubble_outline_rounded,
+                  loading: openingChat,
+                  outlined: true,
+                  onPressed: openingChat
+                      ? null
+                      : () => onMessageCandidate(application),
+                );
+                final statusPicker = _StatusPicker(
+                  status: application.status,
+                  disabled: updatingStatus,
+                  onChanged: (newStatus) {
+                    if (newStatus != application.status) {
+                      onUpdateStatus(application.id, newStatus);
+                    }
+                  },
+                );
+
+                if (compact) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      viewCvButton,
+                      const SizedBox(height: AppSpacing.sm),
+                      messageButton,
+                      const SizedBox(height: AppSpacing.sm),
+                      statusPicker,
+                    ],
+                  );
+                }
+
+                return Wrap(
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.sm,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    SizedBox(width: 126, child: viewCvButton),
+                    SizedBox(width: 132, child: messageButton),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        minWidth: 150,
+                        maxWidth: 190,
+                      ),
+                      child: statusPicker,
+                    ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InitialsAvatar extends StatelessWidget {
+  final String name;
+
+  const _InitialsAvatar({required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 48,
+      height: 48,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [AppColors.primary, AppColors.primaryBlue],
+        ),
+        borderRadius: BorderRadius.circular(AppRadii.md),
+      ),
+      child: Text(
+        _initials(name),
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w900,
+          fontSize: 16,
+        ),
+      ),
+    );
+  }
+}
+
+class _MetaChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _MetaChip({
+    required this.icon,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 240),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF4F7FF),
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: AppColors.primary),
+          const SizedBox(width: 5),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  final String status;
+  final Color bg;
+  final Color textColor;
+
+  const _StatusChip({
+    required this.status,
+    required this.bg,
+    required this.textColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+      ),
+      child: Text(
+        status,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: textColor,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback? onPressed;
+  final bool outlined;
+  final bool loading;
+
+  const _ActionButton({
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+    this.outlined = false,
+    this.loading = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final child = Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (loading)
+          const SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
+        else
+          Icon(icon, size: 18),
+        const SizedBox(width: AppSpacing.xs),
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+
+    if (outlined) {
+      return OutlinedButton(
+        onPressed: onPressed,
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+        ),
+        child: child,
+      );
+    }
+
+    return FilledButton(
+      onPressed: onPressed,
+      style: FilledButton.styleFrom(
+        backgroundColor: AppColors.primary,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _StatusPicker extends StatelessWidget {
+  final String status;
+  final bool disabled;
+  final ValueChanged<String> onChanged;
+
+  const _StatusPicker({
+    required this.status,
+    required this.disabled,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonFormField<String>(
+      initialValue: status,
+      isExpanded: true,
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: 10,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          borderSide: const BorderSide(color: AppColors.borderLight),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          borderSide: const BorderSide(color: AppColors.borderLight),
+        ),
+      ),
+      items: const [
+        DropdownMenuItem(value: 'PENDING', child: Text('Pending')),
+        DropdownMenuItem(value: 'REVIEWED', child: Text('Reviewed')),
+        DropdownMenuItem(value: 'SHORTLISTED', child: Text('Shortlisted')),
+        DropdownMenuItem(value: 'REJECTED', child: Text('Rejected')),
+      ],
+      onChanged: disabled
+          ? null
+          : (newStatus) {
+              if (newStatus != null) onChanged(newStatus);
+            },
+    );
+  }
+}
+
+String _initials(String name) {
+  final words = name
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((word) => word.isNotEmpty)
+      .toList();
+  if (words.isEmpty) return 'C';
+  if (words.length == 1) return words.first.substring(0, 1).toUpperCase();
+  return '${words[0][0]}${words[1][0]}'.toUpperCase();
 }

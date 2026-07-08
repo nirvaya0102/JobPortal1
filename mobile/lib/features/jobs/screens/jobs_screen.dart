@@ -92,7 +92,7 @@ class _JobsScreenState extends State<JobsScreen> {
         salaryMax: salaryMaxFilter,
         sortBy: sortBy,
         sortOrder: sortOrder,
-        status: 'OPEN',
+        status: 'APPROVED',
       );
 
       if (!mounted) return;
@@ -294,7 +294,7 @@ class _JobsScreenState extends State<JobsScreen> {
         salaryMax: salaryMaxFilter,
         sortBy: sortBy,
         sortOrder: sortOrder,
-        status: 'OPEN',
+        status: 'APPROVED',
       );
 
       if (!mounted) return;

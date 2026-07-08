@@ -157,9 +157,6 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
           'Complete your headline, bio, and skills to improve profile visibility.',
         );
         break;
-      case 'Job Alerts':
-        _showFeatureNote('Job alert settings will be available soon.');
-        break;
       default:
         _showFeatureNote('This section is read-only for now.');
     }
@@ -370,13 +367,6 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
                   subtitle: profile.profileCompletion >= 80
                       ? 'Your profile looks strong'
                       : 'Complete more fields to improve visibility',
-                ),
-                _ProfileRowItem(
-                  icon: Icons.notifications_outlined,
-                  title: 'Job Alerts',
-                  subtitle: profile.location == 'Your location'
-                      ? 'Add a location to improve alerts'
-                      : 'Alerts tuned for ${profile.location}',
                 ),
               ],
             ),

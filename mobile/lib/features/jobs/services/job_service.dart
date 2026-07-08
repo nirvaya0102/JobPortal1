@@ -88,7 +88,7 @@ class JobService {
     int? salaryMax,
     String sortBy = 'createdAt',
     String sortOrder = 'desc',
-    String status = 'OPEN',
+    String status = 'APPROVED',
   }) async {
     try {
       final response = await ApiClient.dio.get(

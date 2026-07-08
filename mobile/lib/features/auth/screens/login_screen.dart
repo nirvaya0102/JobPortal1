@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../jobs/screens/candidate_main_screen.dart';
+import '../../admin/screens/admin_dashboard_screen.dart';
 import '../services/auth_service.dart';
 import 'register_screen.dart';
 import '../../employer/screens/employer_dashboard_screen.dart';
@@ -56,8 +57,34 @@ class _LoginScreenState extends State<LoginScreen> {
         throw Exception('Token not found in login response');
       }
 
-      if (user['role'] == 'EMPLOYER') {
+      if (user['role'] == 'ADMIN') {
         await UserStorage.saveUser(
+          id: (user['id'] ?? '').toString(),
+          name: (user['name'] ?? '').toString(),
+          role: (user['role'] ?? '').toString(),
+          location: (user['location'] ?? '').toString(),
+          email: (user['email'] ?? email).toString(),
+          phone: (user['phone'] ?? '').toString(),
+        );
+
+        if (rememberMe) {
+          await UserStorage.saveRememberMeEmail(email);
+        } else {
+          await UserStorage.clearRememberMeEmail();
+        }
+
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => AdminDashboardScreen(
+              name: (user['name'] ?? 'Admin').toString(),
+            ),
+          ),
+        );
+      } else if (user['role'] == 'EMPLOYER') {
+        await UserStorage.saveUser(
+          id: (user['id'] ?? '').toString(),
           name: (user['name'] ?? '').toString(),
           role: (user['role'] ?? '').toString(),
           location: (user['companyLocation'] ?? '').toString(),
@@ -82,6 +109,7 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       } else {
         await UserStorage.saveUser(
+          id: (user['id'] ?? '').toString(),
           name: (user['name'] ?? '').toString(),
           role: (user['role'] ?? '').toString(),
           location: (user['location'] ?? '').toString(),

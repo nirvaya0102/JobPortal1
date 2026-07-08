@@ -7,7 +7,6 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../core/storage/user_storage.dart';
 import '../../auth/screens/login_screen.dart';
 import '../../auth/services/auth_service.dart';
-import '../../notifications/screens/notifications_screen.dart';
 import '../../profile/services/candidate_profile_service.dart';
 import '../models/job_model.dart';
 import '../providers/candidate_dashboard_provider.dart';
@@ -126,11 +125,7 @@ class _CandidateDashboardScreenState extends State<CandidateDashboardScreen>
   }
 
   Future<void> _refreshDashboard() async {
-    await Future.wait([
-      _loadJobs(),
-      _loadMetrics(),
-      _loadHeader(),
-    ]);
+    await Future.wait([_loadJobs(), _loadMetrics(), _loadHeader()]);
   }
 
   Future<void> _loadJobs() async {
@@ -202,9 +197,12 @@ class _CandidateDashboardScreenState extends State<CandidateDashboardScreen>
 
   @override
   Widget build(BuildContext context) {
-    final resolvedName = (name ?? '').trim().isEmpty ? 'Candidate' : name!.trim();
-    final resolvedLocation =
-        (location ?? '').trim().isEmpty ? null : location!.trim();
+    final resolvedName = (name ?? '').trim().isEmpty
+        ? 'Candidate'
+        : name!.trim();
+    final resolvedLocation = (location ?? '').trim().isEmpty
+        ? null
+        : location!.trim();
 
     return Scaffold(
       backgroundColor: AppColors.canvasLight,
@@ -230,7 +228,8 @@ class _CandidateDashboardScreenState extends State<CandidateDashboardScreen>
                   opacity:
                       _fadeAnimation ?? const AlwaysStoppedAnimation<double>(1),
                   child: SlideTransition(
-                    position: _slideAnimation ??
+                    position:
+                        _slideAnimation ??
                         const AlwaysStoppedAnimation<Offset>(Offset.zero),
                     child: ListView(
                       physics: const AlwaysScrollableScrollPhysics(
@@ -243,15 +242,6 @@ class _CandidateDashboardScreenState extends State<CandidateDashboardScreen>
                           name: resolvedName,
                           location: resolvedLocation,
                           onOpenProfile: widget.onOpenProfile,
-                          onOpenNotifications: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    const NotificationsScreen(currentIndex: 0),
-                              ),
-                            );
-                          },
                           onLogout: _logout,
                         ),
                         const SizedBox(height: AppSpacing.lg),
@@ -331,7 +321,9 @@ class _CandidateDashboardScreenState extends State<CandidateDashboardScreen>
                           style: OutlinedButton.styleFrom(
                             minimumSize: const Size.fromHeight(50),
                             foregroundColor: AppColors.primaryBlue,
-                            side: const BorderSide(color: AppColors.borderLight),
+                            side: const BorderSide(
+                              color: AppColors.borderLight,
+                            ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(AppRadii.lg),
                             ),
@@ -355,7 +347,6 @@ class _DashboardHeader extends StatelessWidget {
   final String name;
   final String? location;
   final VoidCallback? onOpenProfile;
-  final VoidCallback onOpenNotifications;
   final VoidCallback onLogout;
 
   const _DashboardHeader({
@@ -363,7 +354,6 @@ class _DashboardHeader extends StatelessWidget {
     required this.name,
     required this.location,
     required this.onOpenProfile,
-    required this.onOpenNotifications,
     required this.onLogout,
   });
 
@@ -436,37 +426,32 @@ class _DashboardHeader extends StatelessWidget {
               ),
               if (location != null) ...[
                 const SizedBox(height: AppSpacing.xs),
-//                 Row(
-//                   children: [
-//                     const Icon(
-//                       Icons.location_on_outlined,
-//                       size: 15,
-//                       color: AppColors.textHint,
-//                     ),
-//                     const SizedBox(width: 4),
-//                     Flexible(
-//                       child: Text(
-//                         location!,
-//                         maxLines: 1,
-//                         overflow: TextOverflow.ellipsis,
-//                         style: const TextStyle(
-//                           color: AppColors.textHint,
-//                           fontSize: 12,
-//                           fontWeight: FontWeight.w600,
-//                         ),
-//                       ),
-//                     ),
-//                   ],
-//                 ),
+                //                 Row(
+                //                   children: [
+                //                     const Icon(
+                //                       Icons.location_on_outlined,
+                //                       size: 15,
+                //                       color: AppColors.textHint,
+                //                     ),
+                //                     const SizedBox(width: 4),
+                //                     Flexible(
+                //                       child: Text(
+                //                         location!,
+                //                         maxLines: 1,
+                //                         overflow: TextOverflow.ellipsis,
+                //                         style: const TextStyle(
+                //                           color: AppColors.textHint,
+                //                           fontSize: 12,
+                //                           fontWeight: FontWeight.w600,
+                //                         ),
+                //                       ),
+                //                     ),
+                //                   ],
+                //                 ),
               ],
             ],
           ),
         ),
-        _HeaderIconButton(
-          icon: Icons.notifications_none_rounded,
-          onTap: onOpenNotifications,
-        ),
-        const SizedBox(width: AppSpacing.xs),
         _HeaderIconButton(icon: Icons.logout_rounded, onTap: onLogout),
       ],
     );
@@ -795,7 +780,9 @@ class _ErrorCard extends StatelessWidget {
           const Icon(Icons.error_outline_rounded, color: AppColors.danger),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            message.isEmpty ? 'Something went wrong. Please try again.' : message,
+            message.isEmpty
+                ? 'Something went wrong. Please try again.'
+                : message,
             style: const TextStyle(
               fontSize: 13,
               color: AppColors.danger,
@@ -877,7 +864,7 @@ class _FeaturedSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const SizedBox(
-      height: 286,
+      height: 302,
       child: Row(
         children: [
           Expanded(child: _SkeletonBox(radius: 24)),

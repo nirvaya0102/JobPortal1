@@ -39,11 +39,14 @@ class _CandidateFeaturedJobCarouselState
       return const _FeaturedEmptyState();
     }
 
+    final width = MediaQuery.sizeOf(context).width;
+    final carouselHeight = width < 360 ? 326.0 : 302.0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          height: 286,
+          height: carouselHeight,
           child: PageView.builder(
             controller: _controller,
             itemCount: widget.jobs.length,
@@ -177,7 +180,7 @@ class _FeaturedJobCardState extends State<FeaturedJobCard> {
                 child: _DecorCircle(size: 58, opacity: 0.045),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+                padding: const EdgeInsets.fromLTRB(18, 15, 18, 14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -191,7 +194,7 @@ class _FeaturedJobCardState extends State<FeaturedJobCard> {
                         const _FeaturedBadge(),
                       ],
                     ),
-                    const SizedBox(height: AppSpacing.md),
+                    const SizedBox(height: 10),
                     Text(
                       job.title,
                       maxLines: 2,
@@ -214,10 +217,10 @@ class _FeaturedJobCardState extends State<FeaturedJobCard> {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: AppSpacing.sm),
+                    const SizedBox(height: 7),
                     Wrap(
-                      spacing: 7,
-                      runSpacing: 7,
+                      spacing: 6,
+                      runSpacing: 6,
                       children: [
                         MetaChip(
                           icon: Icons.location_on_outlined,
@@ -237,7 +240,7 @@ class _FeaturedJobCardState extends State<FeaturedJobCard> {
                         ),
                       ],
                     ),
-                    const Spacer(),
+                    const SizedBox(height: 10),
                     Row(
                       children: [
                         FilledButton.icon(
@@ -252,10 +255,10 @@ class _FeaturedJobCardState extends State<FeaturedJobCard> {
                             backgroundColor: Colors.white,
                             foregroundColor: AppColors.primaryBlue,
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 18,
-                              vertical: 12,
+                              horizontal: 16,
+                              vertical: 10,
                             ),
-                            minimumSize: const Size(0, 42),
+                            minimumSize: const Size(0, 38),
                             textStyle: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w900,
@@ -386,8 +389,8 @@ class MetaChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(maxWidth: 154),
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+      constraints: const BoxConstraints(maxWidth: 148),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(AppRadii.pill),
@@ -434,7 +437,9 @@ class _SaveButton extends StatelessWidget {
           backgroundColor: Colors.white.withValues(alpha: 0.14),
           foregroundColor: Colors.white,
           side: BorderSide(color: Colors.white.withValues(alpha: 0.18)),
-          fixedSize: const Size(42, 42),
+          fixedSize: const Size(38, 38),
+          minimumSize: const Size(38, 38),
+          padding: EdgeInsets.zero,
         ),
         icon: Icon(
           isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,

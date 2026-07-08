@@ -10,6 +10,7 @@ class EmployerRecentJobCard extends StatelessWidget {
   final String subtitle;
   final String applicantSummary;
   final String status;
+  final String? rejectionReason;
   final VoidCallback onTapApplicants;
 
   const EmployerRecentJobCard({
@@ -18,20 +19,42 @@ class EmployerRecentJobCard extends StatelessWidget {
     required this.subtitle,
     required this.applicantSummary,
     required this.status,
+    this.rejectionReason,
     required this.onTapApplicants,
   });
 
   Color _statusColor(String value) {
     final normalized = value.toUpperCase();
-    if (normalized == 'OPEN' || normalized == 'ACTIVE') {
+    if (normalized == 'APPROVED') {
       return AppColors.success;
     }
+    if (normalized == 'REJECTED') {
+      return AppColors.danger;
+    }
+    if (normalized == 'CLOSED') {
+      return AppColors.textSecondary;
+    }
     return Colors.orange;
+  }
+
+  String _statusLabel(String value) {
+    switch (value.toUpperCase()) {
+      case 'APPROVED':
+        return 'Approved';
+      case 'REJECTED':
+        return 'Rejected';
+      case 'CLOSED':
+        return 'Closed';
+      case 'PENDING':
+      default:
+        return 'Pending Approval';
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final statusColor = _statusColor(status);
+    final reason = rejectionReason?.trim();
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -76,7 +99,7 @@ class EmployerRecentJobCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(AppRadii.pill),
                       ),
                       child: Text(
-                        status,
+                        _statusLabel(status),
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
@@ -93,6 +116,18 @@ class EmployerRecentJobCard extends StatelessWidget {
                         color: AppColors.textSecondary,
                       ),
                 ),
+                if (status.toUpperCase() == 'REJECTED' &&
+                    reason != null &&
+                    reason.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    'Reason: $reason',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.danger,
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.md),
                 Row(
                   children: [

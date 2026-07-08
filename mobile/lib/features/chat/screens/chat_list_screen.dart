@@ -26,14 +26,20 @@ class _ChatListScreenState extends State<ChatListScreen> {
   Future<List<Channel>> _loadChannels() async {
     final client = await JobPortalStreamChatService.instance.connect();
     final userId = JobPortalStreamChatService.instance.currentUserId;
-    return client.queryChannels(
-      filter: userId == null ? null : Filter.in_('members', [userId]),
-      channelStateSort: const [
-        SortOption<ChannelState>.desc(ChannelSortKey.lastMessageAt),
-      ],
-      watch: true,
-      state: true,
-    ).first;
+    if (userId == null || userId.isEmpty) {
+      throw Exception('Unable to load chats for this user.');
+    }
+
+    return client
+        .queryChannels(
+          filter: Filter.in_('members', [userId]),
+          channelStateSort: const [
+            SortOption<ChannelState>.desc(ChannelSortKey.lastMessageAt),
+          ],
+          watch: true,
+          state: true,
+        )
+        .first;
   }
 
   Future<void> _refresh() async {
@@ -112,10 +118,7 @@ class _ChannelTile extends StatelessWidget {
   final Channel channel;
   final VoidCallback onTap;
 
-  const _ChannelTile({
-    required this.channel,
-    required this.onTap,
-  });
+  const _ChannelTile({required this.channel, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -235,10 +238,7 @@ class _ChatListError extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
 
-  const _ChatListError({
-    required this.message,
-    required this.onRetry,
-  });
+  const _ChatListError({required this.message, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {

@@ -17,6 +17,9 @@ class JobModel {
   final int? salaryMax;
   final String? createdAt;
   final String? createdById;
+  final String? rejectionReason;
+  final String? employerName;
+  final String? employerEmail;
 
   JobModel({
     required this.id,
@@ -37,6 +40,9 @@ class JobModel {
     this.salaryMax,
     this.createdAt,
     this.createdById,
+    this.rejectionReason,
+    this.employerName,
+    this.employerEmail,
   });
 
   factory JobModel.fromJson(Map<String, dynamic> json) {
@@ -66,6 +72,8 @@ class JobModel {
     }
 
     final company = json['company'];
+    final employer = json['employer'];
+    final createdBy = json['createdBy'];
 
     return JobModel(
       id: json['id']?.toString() ?? '',
@@ -91,6 +99,17 @@ class JobModel {
       salaryMax: salaryMax,
       createdAt: json['createdAt']?.toString(),
       createdById: json['createdById']?.toString(),
+      rejectionReason: json['rejectionReason']?.toString(),
+      employerName: employer is Map
+          ? employer['name']?.toString()
+          : createdBy is Map
+          ? createdBy['name']?.toString()
+          : null,
+      employerEmail: employer is Map
+          ? employer['email']?.toString()
+          : createdBy is Map
+          ? createdBy['email']?.toString()
+          : null,
     );
   }
 }

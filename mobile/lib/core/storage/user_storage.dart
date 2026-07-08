@@ -4,19 +4,24 @@ class UserStorage {
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
 
   static const String _nameKey = 'user_name';
+  static const String _idKey = 'user_id';
   static const String _roleKey = 'user_role';
   static const String _locationKey = 'user_location';
   static const String _emailKey = 'user_email';
   static const String _phoneKey = 'user_phone';
-  static const String _rememberMeEmailKey = 'remember_me_email';  // AUTH-006
+  static const String _rememberMeEmailKey = 'remember_me_email'; // AUTH-006
 
   static Future<void> saveUser({
+    String? id,
     required String name,
     required String role,
     String? location,
     String? email,
     String? phone,
   }) async {
+    if (id != null && id.trim().isNotEmpty) {
+      await _storage.write(key: _idKey, value: id.trim());
+    }
     await _storage.write(key: _nameKey, value: name);
     await _storage.write(key: _roleKey, value: role);
     if (location != null && location.trim().isNotEmpty) {
@@ -30,6 +35,7 @@ class UserStorage {
     }
   }
 
+  static Future<String?> getId() => _storage.read(key: _idKey);
   static Future<String?> getName() => _storage.read(key: _nameKey);
   static Future<String?> getRole() => _storage.read(key: _roleKey);
   static Future<String?> getLocation() => _storage.read(key: _locationKey);
@@ -50,6 +56,7 @@ class UserStorage {
       _storage.delete(key: _rememberMeEmailKey);
 
   static Future<void> clear() async {
+    await _storage.delete(key: _idKey);
     await _storage.delete(key: _nameKey);
     await _storage.delete(key: _roleKey);
     await _storage.delete(key: _locationKey);
