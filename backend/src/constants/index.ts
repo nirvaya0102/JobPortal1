@@ -5,7 +5,9 @@ export const USER_ROLES = {
 } as const;
 
 export const JOB_STATUS = {
-  OPEN: "OPEN",
+  PENDING: "PENDING",
+  APPROVED: "APPROVED",
+  REJECTED: "REJECTED",
   CLOSED: "CLOSED",
 } as const;
 

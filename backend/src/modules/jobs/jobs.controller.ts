@@ -61,13 +61,6 @@ export const getAllJobs = asyncHandler(async (req: Request, res: Response) => {
     typeof req.query.location === "string" ? req.query.location.trim() : "";
   const jobType =
     typeof req.query.jobType === "string" ? req.query.jobType.trim() : "";
-  const requestedStatus =
-    typeof req.query.status === "string" ? req.query.status.trim() : "OPEN";
-  const status = Object.values(JobStatus).includes(requestedStatus as JobStatus)
-    ? (requestedStatus as JobStatus)
-    : requestedStatus === "ALL"
-      ? "ALL"
-      : JobStatus.OPEN;
   const salaryMin =
     req.query.salaryMin !== undefined && req.query.salaryMin !== ""
       ? Number(req.query.salaryMin)
@@ -81,9 +74,7 @@ export const getAllJobs = asyncHandler(async (req: Request, res: Response) => {
 
   const filters: Prisma.JobWhereInput[] = [];
 
-  if (status !== "ALL") {
-    filters.push({ status });
-  }
+  filters.push({ status: JobStatus.APPROVED });
 
   if (search) {
     filters.push({

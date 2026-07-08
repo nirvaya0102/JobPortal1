@@ -7,7 +7,9 @@ import { requireRole } from "./middleware/role.middleware";
 import cookieParser from "cookie-parser";
 
 import jobRoutes from "./modules/jobs/jobs.routes";
+import adminJobRoutes from "./modules/admin/admin.jobs.routes";
 import notificationRoutes from "./modules/notifications/notification.routes";
+import streamRoutes from "./modules/stream/stream.routes";
 const app = express();
 
 
@@ -49,6 +51,8 @@ app.get(
 );
 
 app.use("/api/jobs", jobRoutes);
+app.use("/api/admin/jobs", adminJobRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/stream", streamRoutes);
 
 export default app;

@@ -55,10 +55,19 @@ export const registerUser = async (data: any) => {
     companyLocation,
     companyDescription,
     companyWebsite,
+    adminRegistrationCode,
   } = data;
 
-  if (![USER_ROLES.CANDIDATE, USER_ROLES.EMPLOYER].includes(role)) {
+  if (![USER_ROLES.CANDIDATE, USER_ROLES.EMPLOYER, USER_ROLES.ADMIN].includes(role)) {
     throw new AppError("Invalid role", 400);
+  }
+
+  if (role === USER_ROLES.ADMIN) {
+    const expectedCode = process.env.ADMIN_REGISTRATION_CODE;
+
+    if (!expectedCode || adminRegistrationCode !== expectedCode) {
+      throw new AppError("Invalid admin registration code", 403);
+    }
   }
 
   const existingUser = await prisma.user.findUnique({
@@ -108,7 +117,7 @@ export const registerUser = async (data: any) => {
         candidateProfile: true,
       },
     });
-  } else {
+  } else if (role === USER_ROLES.CANDIDATE) {
     user = await prisma.user.create({
       data: {
         name,
@@ -127,6 +136,23 @@ export const registerUser = async (data: any) => {
             resumeUrl: null,
           },
         },
+      },
+      include: {
+        company: true,
+        candidateProfile: true,
+      },
+    });
+  } else {
+    user = await prisma.user.create({
+      data: {
+        name,
+        email,
+        phone: phone || null,
+        password: hashedPassword,
+        role,
+        emailVerified: false,
+        emailVerificationToken,
+        emailVerificationExpires,
       },
       include: {
         company: true,

@@ -21,17 +21,19 @@ model User {
   emailVerificationToken   String?
   emailVerificationExpires DateTime?
 
-  passwordResetToken       String?
-  passwordResetExpires     DateTime?
-  refreshToken             String?
-  fcmToken                 String?
+  passwordResetToken   String?
+  passwordResetExpires DateTime?
+  refreshToken         String?
+  fcmToken             String?
 
   companyId String?
   company   Company? @relation(fields: [companyId], references: [id])
 
   candidateProfile CandidateProfile?
   applications     Application[]
-  jobs             Job[] @relation("PostedJobs")
+  jobs             Job[]             @relation("PostedJobs")
+  approvedJobs     Job[]             @relation("ApprovedJobs")
+  rejectedJobs     Job[]             @relation("RejectedJobs")
   notifications    Notification[]
 
   @@index([role])
@@ -41,8 +43,8 @@ model User {
 }
 
 model CandidateProfile {
-  id             String   @id @default(uuid())
-  userId         String   @unique
+  id             String  @id @default(uuid())
+  userId         String  @unique
   headline       String?
   bio            String?
   skills         String?
@@ -66,27 +68,36 @@ model Company {
 }
 
 model Job {
-  id          String    @id @default(uuid())
-  jobCode     String?   @unique
-  title       String
-  description String
-  location    String
-  jobType     String
-  salaryMin   Int?
-  salaryMax   Int?
-  status      JobStatus @default(OPEN)
-  createdAt   DateTime  @default(now())
+  id              String    @id @default(uuid())
+  jobCode         String?   @unique
+  title           String
+  description     String
+  location        String
+  jobType         String
+  salaryMin       Int?
+  salaryMax       Int?
+  status          JobStatus @default(PENDING)
+  createdAt       DateTime  @default(now())
+  rejectionReason String?
+  approvedAt      DateTime?
+  approvedById    String?
+  rejectedAt      DateTime?
+  rejectedById    String?
 
   companyId   String
   createdById String
 
-  company   Company @relation(fields: [companyId], references: [id])
-  createdBy User    @relation("PostedJobs", fields: [createdById], references: [id])
+  company    Company @relation(fields: [companyId], references: [id])
+  createdBy  User    @relation("PostedJobs", fields: [createdById], references: [id])
+  approvedBy User?   @relation("ApprovedJobs", fields: [approvedById], references: [id])
+  rejectedBy User?   @relation("RejectedJobs", fields: [rejectedById], references: [id])
 
   applications Application[]
 
   @@index([createdById])
   @@index([companyId])
+  @@index([approvedById])
+  @@index([rejectedById])
   @@index([status])
   @@index([createdAt])
   @@index([location])
@@ -134,22 +145,24 @@ enum ApplicationStatus {
 }
 
 enum JobStatus {
-  OPEN
+  PENDING
+  APPROVED
+  REJECTED
   CLOSED
 }
 
 model Notification {
-  id        String   @id @default(uuid())
+  id        String           @id @default(uuid())
   userId    String
   title     String
   message   String
   type      NotificationType
-  read      Boolean  @default(false)
+  read      Boolean          @default(false)
   actionUrl String?
   relatedId String?
-  createdAt DateTime @default(now())
+  createdAt DateTime         @default(now())
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([userId, read])

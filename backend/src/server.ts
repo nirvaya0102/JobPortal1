@@ -1,12 +1,10 @@
-import dotenv from "dotenv";
+import "dotenv/config";
 import app from "./app";
 import authRoutes from "./modules/auth/auth.routes";
 import { errorMiddleware } from "./middleware/error.middleware";
 
 import cookieParser from "cookie-parser";
 
-
-dotenv.config();
 app.use(cookieParser());
 const PORT = process.env.PORT || 5000;
 

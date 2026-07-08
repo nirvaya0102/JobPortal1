@@ -1,5 +1,5 @@
 import prisma from "../../lib/prisma";
-import { ApplicationStatus } from "@prisma/client";
+import { ApplicationStatus, JobStatus } from "@prisma/client";
 import { AppError } from "../../utils/AppError";
 import { sendPushNotification } from "../../utils/firebase";
 
@@ -38,6 +38,7 @@ export const createJobService = async (data: any, userId: string) => {
             jobType,
             salaryMin,
             salaryMax,
+            status: JobStatus.PENDING,
             companyId: employer.companyId,
             createdById: employer.id,
             jobCode,
@@ -61,7 +62,7 @@ export const getAllJobsService = async (query: any) => {
 
     return await prisma.job.findMany({
         where: {
-            status: "OPEN",
+            status: JobStatus.APPROVED,
 
             AND: [
                 keyword
@@ -109,8 +110,11 @@ export const getAllJobsService = async (query: any) => {
     });
 };
 export const getJobByIdService = async (jobId: string) => {
-    return await prisma.job.findUnique({
-        where: { id: jobId },
+    return await prisma.job.findFirst({
+        where: {
+            id: jobId,
+            status: JobStatus.APPROVED,
+        },
         include: {
             company: true,
         },
@@ -146,6 +150,10 @@ export const applyToJobService = async (
 
     if (!job) {
         throw new Error("Job not found");
+    }
+
+    if (job.status !== JobStatus.APPROVED) {
+        throw new AppError("This job is not available for applications", 403);
     }
 
     // prevent duplicate apply
@@ -220,7 +228,21 @@ export const getJobApplicantsService = async (
     return await prisma.application.findMany({
         where: { jobId },
         include: {
-            candidate: true,
+            candidate: {
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    phone: true,
+                    candidateProfile: {
+                        select: {
+                            resumeUrl: true,
+                            resumeFileName: true,
+                            resumeFileType: true,
+                        },
+                    },
+                },
+            },
         },
         orderBy: {
             appliedAt: "desc",
