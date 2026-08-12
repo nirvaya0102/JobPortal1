@@ -44,7 +44,6 @@ dependencies:
   flutter_local_notifications: ^17.2.4
   firebase_messaging: 16.2.2
   stream_chat: ^10.1.0
-  syncfusion_flutter_pdfviewer: ^31.2.18
 dev_dependencies:
   flutter_test:
     sdk: flutter

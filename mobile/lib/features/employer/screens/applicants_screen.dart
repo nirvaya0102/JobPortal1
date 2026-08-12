@@ -10,7 +10,6 @@ import '../../chat/screens/chat_room_screen.dart';
 import '../../chat/services/stream_chat_service.dart';
 import '../../jobs/models/application_model.dart';
 import '../../jobs/services/job_service.dart';
-import 'resume_preview_screen.dart';
 
 class ApplicantsScreen extends StatefulWidget {
   final String jobId;
@@ -143,10 +142,14 @@ class _ApplicantsScreenState extends State<ApplicantsScreen> {
   Future<void> viewResume(ApplicationModel application) async {
     try {
       setState(() => openingResumeIds.add(application.id));
-      var url = application.resumeUrl?.trim() ?? application.candidate.resumeUrl?.trim() ?? '';
+      var url = '';
 
-      if (url.isEmpty) {
+      try {
         url = await jobService.getApplicationResume(widget.jobId, application.id);
+      } catch (_) {
+        url = application.resumeUrl?.trim() ??
+            application.candidate.resumeUrl?.trim() ??
+            '';
       }
 
       if (url.trim().isEmpty) {
@@ -162,22 +165,7 @@ class _ApplicantsScreenState extends State<ApplicantsScreen> {
         return;
       }
 
-      if (!mounted) return;
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ResumePreviewScreen(
-            resumeUrl: url,
-            candidateName: application.candidate.name.trim().isEmpty
-                ? 'Candidate'
-                : application.candidate.name.trim(),
-            fileName: application.resumeFileName ??
-                application.candidate.resumeFileName,
-            fileType: application.resumeFileType ??
-                application.candidate.resumeFileType,
-          ),
-        ),
-      );
+      _showSnack('CV preview is temporarily hidden.');
     } catch (e) {
       if (!mounted) return;
       final raw = e.toString().toLowerCase();
@@ -345,12 +333,8 @@ class _ApplicantsScreenState extends State<ApplicantsScreen> {
                             items: pending,
                             statusBg: _statusBg,
                             statusText: _statusText,
-                            onViewResume: viewResume,
-                            onMessageCandidate: openCandidateChat,
                             onUpdateStatus: _updateStatusWithLoading,
                             formatDate: _formatAppliedDate,
-                            openingResumeIds: openingResumeIds,
-                            openingChatIds: openingChatIds,
                             updatingStatusIds: updatingStatusIds,
                           ),
                           _ApplicantSection(
@@ -359,12 +343,8 @@ class _ApplicantsScreenState extends State<ApplicantsScreen> {
                             items: reviewed,
                             statusBg: _statusBg,
                             statusText: _statusText,
-                            onViewResume: viewResume,
-                            onMessageCandidate: openCandidateChat,
                             onUpdateStatus: _updateStatusWithLoading,
                             formatDate: _formatAppliedDate,
-                            openingResumeIds: openingResumeIds,
-                            openingChatIds: openingChatIds,
                             updatingStatusIds: updatingStatusIds,
                           ),
                           _ApplicantSection(
@@ -373,12 +353,8 @@ class _ApplicantsScreenState extends State<ApplicantsScreen> {
                             items: shortlisted,
                             statusBg: _statusBg,
                             statusText: _statusText,
-                            onViewResume: viewResume,
-                            onMessageCandidate: openCandidateChat,
                             onUpdateStatus: _updateStatusWithLoading,
                             formatDate: _formatAppliedDate,
-                            openingResumeIds: openingResumeIds,
-                            openingChatIds: openingChatIds,
                             updatingStatusIds: updatingStatusIds,
                           ),
                           _ApplicantSection(
@@ -387,12 +363,8 @@ class _ApplicantsScreenState extends State<ApplicantsScreen> {
                             items: rejected,
                             statusBg: _statusBg,
                             statusText: _statusText,
-                            onViewResume: viewResume,
-                            onMessageCandidate: openCandidateChat,
                             onUpdateStatus: _updateStatusWithLoading,
                             formatDate: _formatAppliedDate,
-                            openingResumeIds: openingResumeIds,
-                            openingChatIds: openingChatIds,
                             updatingStatusIds: updatingStatusIds,
                           ),
                         ],
@@ -408,12 +380,8 @@ class _ApplicantSection extends StatelessWidget {
   final List<ApplicationModel> items;
   final Color Function(String) statusBg;
   final Color Function(String) statusText;
-  final Future<void> Function(ApplicationModel) onViewResume;
-  final Future<void> Function(ApplicationModel) onMessageCandidate;
   final Future<void> Function(String, String) onUpdateStatus;
   final String Function(String) formatDate;
-  final Set<String> openingResumeIds;
-  final Set<String> openingChatIds;
   final Set<String> updatingStatusIds;
 
   const _ApplicantSection({
@@ -422,12 +390,8 @@ class _ApplicantSection extends StatelessWidget {
     required this.items,
     required this.statusBg,
     required this.statusText,
-    required this.onViewResume,
-    required this.onMessageCandidate,
     required this.onUpdateStatus,
     required this.formatDate,
-    required this.openingResumeIds,
-    required this.openingChatIds,
     required this.updatingStatusIds,
   });
 
@@ -449,12 +413,8 @@ class _ApplicantSection extends StatelessWidget {
               application: app,
               statusBg: statusBg,
               statusText: statusText,
-              onViewResume: onViewResume,
-              onMessageCandidate: onMessageCandidate,
               onUpdateStatus: onUpdateStatus,
               formatDate: formatDate,
-              openingResume: openingResumeIds.contains(app.id),
-              openingChat: openingChatIds.contains(app.id),
               updatingStatus: updatingStatusIds.contains(app.id),
             ),
           ),
@@ -468,24 +428,16 @@ class _ApplicantCard extends StatelessWidget {
   final ApplicationModel application;
   final Color Function(String) statusBg;
   final Color Function(String) statusText;
-  final Future<void> Function(ApplicationModel) onViewResume;
-  final Future<void> Function(ApplicationModel) onMessageCandidate;
   final Future<void> Function(String, String) onUpdateStatus;
   final String Function(String) formatDate;
-  final bool openingResume;
-  final bool openingChat;
   final bool updatingStatus;
 
   const _ApplicantCard({
     required this.application,
     required this.statusBg,
     required this.statusText,
-    required this.onViewResume,
-    required this.onMessageCandidate,
     required this.onUpdateStatus,
     required this.formatDate,
-    required this.openingResume,
-    required this.openingChat,
     required this.updatingStatus,
   });
 
@@ -652,23 +604,6 @@ class _ApplicantCard extends StatelessWidget {
             LayoutBuilder(
               builder: (context, constraints) {
                 final compact = constraints.maxWidth < 390;
-                final viewCvButton = _ActionButton(
-                  label: openingResume ? 'Opening...' : 'View CV',
-                  icon: Icons.description_outlined,
-                  loading: openingResume,
-                  onPressed: openingResume
-                      ? null
-                      : () => onViewResume(application),
-                );
-                final messageButton = _ActionButton(
-                  label: openingChat ? 'Opening...' : 'Message',
-                  icon: Icons.chat_bubble_outline_rounded,
-                  loading: openingChat,
-                  outlined: true,
-                  onPressed: openingChat
-                      ? null
-                      : () => onMessageCandidate(application),
-                );
                 final statusPicker = _StatusPicker(
                   status: application.status,
                   disabled: updatingStatus,
@@ -683,30 +618,20 @@ class _ApplicantCard extends StatelessWidget {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      viewCvButton,
-                      const SizedBox(height: AppSpacing.sm),
-                      messageButton,
-                      const SizedBox(height: AppSpacing.sm),
                       statusPicker,
                     ],
                   );
                 }
 
-                return Wrap(
-                  spacing: AppSpacing.sm,
-                  runSpacing: AppSpacing.sm,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    SizedBox(width: 126, child: viewCvButton),
-                    SizedBox(width: 132, child: messageButton),
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(
-                        minWidth: 150,
-                        maxWidth: 190,
-                      ),
-                      child: statusPicker,
+                return Align(
+                  alignment: Alignment.centerLeft,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      minWidth: 150,
+                      maxWidth: 220,
                     ),
-                  ],
+                    child: statusPicker,
+                  ),
                 );
               },
             ),
@@ -812,67 +737,6 @@ class _StatusChip extends StatelessWidget {
           fontWeight: FontWeight.w900,
         ),
       ),
-    );
-  }
-}
-
-class _ActionButton extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final VoidCallback? onPressed;
-  final bool outlined;
-  final bool loading;
-
-  const _ActionButton({
-    required this.label,
-    required this.icon,
-    required this.onPressed,
-    this.outlined = false,
-    this.loading = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final child = Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (loading)
-          const SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          )
-        else
-          Icon(icon, size: 18),
-        const SizedBox(width: AppSpacing.xs),
-        Flexible(
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    );
-
-    if (outlined) {
-      return OutlinedButton(
-        onPressed: onPressed,
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
-        ),
-        child: child,
-      );
-    }
-
-    return FilledButton(
-      onPressed: onPressed,
-      style: FilledButton.styleFrom(
-        backgroundColor: AppColors.primary,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
-      ),
-      child: child,
     );
   }
 }

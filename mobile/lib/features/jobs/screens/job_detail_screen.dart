@@ -6,8 +6,6 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/candidate_footer.dart';
 import '../../applications/screens/apply_job_screen.dart';
-import '../../chat/screens/chat_room_screen.dart';
-import '../../chat/services/stream_chat_service.dart';
 import '../models/job_model.dart';
 import '../services/job_service.dart';
 import '../services/saved_jobs_service.dart';
@@ -30,46 +28,45 @@ class JobDetailScreen extends StatefulWidget {
 class _JobDetailScreenState extends State<JobDetailScreen> {
   final JobService jobService = JobService();
 
+  List<String> _extractSkills(String description) {
+    final text = description.toLowerCase();
 
-List<String> _extractSkills(String description) {
-  final text = description.toLowerCase();
+    final skills = <String>[];
 
-  final skills = <String>[];
+    final knownSkills = {
+      'figma': 'Figma',
+      'ui': 'UI Design',
+      'ux': 'UX Research',
+      'flutter': 'Flutter',
+      'dart': 'Dart',
+      'react': 'React',
+      'next': 'Next.js',
+      'node': 'Node.js',
+      'javascript': 'JavaScript',
+      'typescript': 'TypeScript',
+      'python': 'Python',
+      'java': 'Java',
+      'sql': 'SQL',
+      'photoshop': 'Photoshop',
+      'illustrator': 'Illustrator',
+      'communication': 'Communication',
+    };
 
-  final knownSkills = {
-    'figma': 'Figma',
-    'ui': 'UI Design',
-    'ux': 'UX Research',
-    'flutter': 'Flutter',
-    'dart': 'Dart',
-    'react': 'React',
-    'next': 'Next.js',
-    'node': 'Node.js',
-    'javascript': 'JavaScript',
-    'typescript': 'TypeScript',
-    'python': 'Python',
-    'java': 'Java',
-    'sql': 'SQL',
-    'photoshop': 'Photoshop',
-    'illustrator': 'Illustrator',
-    'communication': 'Communication',
-  };
+    knownSkills.forEach((key, value) {
+      if (text.contains(key)) {
+        skills.add(value);
+      }
+    });
 
-  knownSkills.forEach((key, value) {
-    if (text.contains(key)) {
-      skills.add(value);
+    if (skills.isEmpty) {
+      return ['Communication', 'Teamwork'];
     }
-  });
 
-  if (skills.isEmpty) {
-    return ['Communication', 'Teamwork'];
+    return skills.take(6).toList();
   }
 
-  return skills.take(6).toList();
-}
   JobModel? job;
   bool loading = true;
-  bool openingChat = false;
   bool isSaved = false;
   String? errorMessage;
 
@@ -126,51 +123,6 @@ List<String> _extractSkills(String description) {
         ),
       ),
     );
-  }
-
-  Future<void> _openEmployerChat() async {
-    final currentJob = job;
-    final employerId = currentJob?.createdById;
-
-    if (currentJob == null || employerId == null || employerId.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Employer chat is not available for this job yet.'),
-        ),
-      );
-      return;
-    }
-
-    try {
-      setState(() => openingChat = true);
-      await JobPortalStreamChatService.instance.connect();
-      final channel = await JobPortalStreamChatService.instance
-          .createOneToOneChannel(
-        targetUserId: employerId,
-        jobId: currentJob.id,
-      );
-
-      if (!mounted) return;
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ChatRoomScreen(
-            channelId: channel.channelId,
-            channelType: channel.channelType,
-          ),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => openingChat = false);
-    }
   }
 
   Future<void> _toggleSaveJob() async {
@@ -531,30 +483,6 @@ List<String> _extractSkills(String description) {
                             ? AppColors.primary
                             : const Color(0xFF4B5563),
                       ),
-                    ),
-                  ),
-
-                  const SizedBox(width: AppSpacing.sm),
-
-                  SizedBox(
-                    width: 52,
-                    height: 52,
-                    child: OutlinedButton(
-                      onPressed: openingChat ? null : _openEmployerChat,
-                      style: OutlinedButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        side: const BorderSide(color: AppColors.borderLight),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      child: openingChat
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.chat_bubble_outline_rounded),
                     ),
                   ),
 

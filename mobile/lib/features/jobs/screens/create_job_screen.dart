@@ -44,8 +44,6 @@ class _CreateJobScreenState extends State<CreateJobScreen>
   static const List<String> jobTypes = [
     'Full-time',
     'Part-time',
-    'Contract',
-    'Internship',
     'Remote',
   ];
   static const List<String> experienceOptions = [

@@ -389,24 +389,6 @@ class _JobsScreenState extends State<JobsScreen> {
                   ],
                 ),
               ),
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(AppRadii.md),
-                  border: Border.all(color: AppColors.borderLight),
-                ),
-                child: IconButton(
-                  icon: Icon(
-                    _hasActiveFilters
-                        ? Icons.filter_alt_rounded
-                        : Icons.filter_alt_outlined,
-                    size: 19,
-                  ),
-                  onPressed: _openFilters,
-                ),
-              ),
             ],
           ),
         ),
@@ -449,70 +431,51 @@ class _JobsScreenState extends State<JobsScreen> {
             AppSpacing.lg,
             AppSpacing.sm,
           ),
-          child: Row(
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: '$sortBy:$sortOrder',
-                  isDense: true,
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: Colors.white,
-                    prefixIcon: const Icon(Icons.sort_rounded, size: 18),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.sm,
-                      vertical: AppSpacing.xs,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppRadii.md),
-                      borderSide: const BorderSide(color: AppColors.borderLight),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppRadii.md),
-                      borderSide: const BorderSide(color: AppColors.borderLight),
-                    ),
-                  ),
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'createdAt:desc',
-                      child: Text('Newest first'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'createdAt:asc',
-                      child: Text('Oldest first'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'salaryMax:desc',
-                      child: Text('Salary high to low'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'salaryMin:asc',
-                      child: Text('Salary low to high'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'applicantsCount:desc',
-                      child: Text('Most applicants'),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    if (value != null) _applySort(value);
-                  },
-                ),
+          child: DropdownButtonFormField<String>(
+            value: '$sortBy:$sortOrder',
+            isDense: true,
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: Colors.white,
+              prefixIcon: const Icon(Icons.sort_rounded, size: 18),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: AppSpacing.xs,
               ),
-              const SizedBox(width: AppSpacing.sm),
-              ActionChip(
-                avatar: Icon(
-                  _hasActiveFilters ? Icons.filter_alt_rounded : Icons.tune_rounded,
-                  size: 17,
-                ),
-                label: Text(_hasActiveFilters ? 'Filters on' : 'Filters'),
-                onPressed: _openFilters,
-                backgroundColor: _hasActiveFilters
-                    ? AppColors.primary.withValues(alpha: 0.10)
-                    : Colors.white,
-                side: const BorderSide(color: AppColors.borderLight),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppRadii.md),
+                borderSide: const BorderSide(color: AppColors.borderLight),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppRadii.md),
+                borderSide: const BorderSide(color: AppColors.borderLight),
+              ),
+            ),
+            items: const [
+              DropdownMenuItem(
+                value: 'createdAt:desc',
+                child: Text('Newest first'),
+              ),
+              DropdownMenuItem(
+                value: 'createdAt:asc',
+                child: Text('Oldest first'),
+              ),
+              DropdownMenuItem(
+                value: 'salaryMax:desc',
+                child: Text('Salary high to low'),
+              ),
+              DropdownMenuItem(
+                value: 'salaryMin:asc',
+                child: Text('Salary low to high'),
+              ),
+              DropdownMenuItem(
+                value: 'applicantsCount:desc',
+                child: Text('Most applicants'),
               ),
             ],
+            onChanged: (value) {
+              if (value != null) _applySort(value);
+            },
           ),
         ),
         if (searching)

@@ -459,6 +459,8 @@ class _ProfileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final displayName = _formatName(profile.name);
+
     return Material(
       color: Colors.white,
       borderRadius: BorderRadius.circular(18),
@@ -478,14 +480,16 @@ class _ProfileCard extends StatelessWidget {
         child: Column(
           children: [
             Text(
-              profile.name,
+              displayName,
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 24,
+                fontSize: 23,
                 fontWeight: FontWeight.w800,
                 color: blue,
-                height: 1.05,
+                height: 1.1,
               ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 6),
             Text(
@@ -496,26 +500,25 @@ class _ProfileCard extends StatelessWidget {
                 fontWeight: FontWeight.w500,
                 color: mutedText,
               ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            Wrap(
+              alignment: WrapAlignment.center,
+              runAlignment: WrapAlignment.center,
+              spacing: 10,
+              runSpacing: 6,
               children: [
-                Icon(Icons.location_on, size: 14, color: mutedText),
-                const SizedBox(width: 4),
-                Text(
-                  profile.location,
-                  style: TextStyle(fontSize: 12.5, color: mutedText),
+                _ProfileMeta(
+                  icon: Icons.location_on,
+                  text: profile.location,
+                  color: mutedText,
                 ),
-                const SizedBox(width: 10),
-                Icon(Icons.email_outlined, size: 14, color: mutedText),
-                const SizedBox(width: 4),
-                Flexible(
-                  child: Text(
-                    profile.email,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 12.5, color: mutedText),
-                  ),
+                _ProfileMeta(
+                  icon: Icons.email_outlined,
+                  text: profile.email,
+                  color: mutedText,
                 ),
               ],
             ),
@@ -548,14 +551,11 @@ class _ProfileCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 18),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              alignment: WrapAlignment.spaceBetween,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: stats
                   .map(
-                    (stat) => SizedBox(
-                      width: 74,
+                    (stat) => Expanded(
                       child: _StatItem(
                         value: stat.value,
                         label: stat.label,
@@ -567,6 +567,50 @@ class _ProfileCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  String _formatName(String value) {
+    final words = value.trim().split(RegExp(r'\s+'));
+    return words
+        .where((word) => word.isNotEmpty)
+        .map((word) {
+          if (word.length == 1) return word.toUpperCase();
+          return '${word[0].toUpperCase()}${word.substring(1)}';
+        })
+        .join(' ');
+  }
+}
+
+class _ProfileMeta extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  final Color color;
+
+  const _ProfileMeta({
+    required this.icon,
+    required this.text,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 180),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              text,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 12.5, color: color),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -588,19 +632,23 @@ class _StatItem extends StatelessWidget {
     return Column(
       children: [
         Container(
-          width: 32,
+          width: 44,
           height: 32,
           decoration: BoxDecoration(
             color: accent,
             borderRadius: BorderRadius.circular(10),
           ),
           alignment: Alignment.center,
-          child: Text(
-            value,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF0B2B6B),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              maxLines: 1,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF0B2B6B),
+              ),
             ),
           ),
         ),
@@ -609,11 +657,13 @@ class _StatItem extends StatelessWidget {
           label,
           textAlign: TextAlign.center,
           style: const TextStyle(
-            fontSize: 11.5,
+            fontSize: 11,
             fontWeight: FontWeight.w600,
             color: Color(0xFF1F2937),
             height: 1.15,
           ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
       ],
     );

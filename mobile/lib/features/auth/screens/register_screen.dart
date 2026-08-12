@@ -20,6 +20,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   final companyNameController = TextEditingController();
   final companyLocationController = TextEditingController();
+  final companyDescriptionController = TextEditingController();
+  final companyWebsiteController = TextEditingController();
   final adminRegistrationCodeController = TextEditingController();
 
   bool loading = false;
@@ -38,15 +40,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     final companyName = companyNameController.text.trim();
     final companyLocation = companyLocationController.text.trim();
+    final companyDescription = companyDescriptionController.text.trim();
+    final companyWebsite = companyWebsiteController.text.trim();
     final adminRegistrationCode = adminRegistrationCodeController.text.trim();
 
-
-
     if (role == 'EMPLOYER') {
-
       if (companyName.isEmpty || companyLocation.isEmpty) {
         setState(() {
           errorMessage = 'Company name and location are required for employer.';
+        });
+        return;
+      }
+
+      if (companyWebsite.isNotEmpty &&
+          !(companyWebsite.startsWith('http://') ||
+              companyWebsite.startsWith('https://'))) {
+        setState(() {
+          errorMessage = 'Company website must start with http:// or https://.';
         });
         return;
       }
@@ -115,6 +125,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         role: role,
         companyName: role == 'EMPLOYER' ? companyName : null,
         companyLocation: role == 'EMPLOYER' ? companyLocation : null,
+        companyDescription: role == 'EMPLOYER' ? companyDescription : null,
+        companyWebsite: role == 'EMPLOYER' ? companyWebsite : null,
         adminRegistrationCode:
             role == 'ADMIN' ? adminRegistrationCode : null,
       );
@@ -155,6 +167,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     confirmPasswordController.dispose();
     companyNameController.dispose();
     companyLocationController.dispose();
+    companyDescriptionController.dispose();
+    companyWebsiteController.dispose();
     adminRegistrationCodeController.dispose();
     super.dispose();
   }
@@ -305,6 +319,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   controller: companyLocationController,
                   decoration: const InputDecoration(
                     labelText: 'Company Location',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                TextField(
+                  controller: companyDescriptionController,
+                  minLines: 3,
+                  maxLines: 5,
+                  decoration: const InputDecoration(
+                    labelText: 'Company Description',
+                    hintText: 'Briefly describe your company',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                TextField(
+                  controller: companyWebsiteController,
+                  keyboardType: TextInputType.url,
+                  decoration: const InputDecoration(
+                    labelText: 'Company Website',
+                    hintText: 'https://company.com',
                     border: OutlineInputBorder(),
                   ),
                 ),

@@ -43,6 +43,8 @@ class AuthService {
     String? phone,
     String? companyName,
     String? companyLocation,
+    String? companyDescription,
+    String? companyWebsite,
     String? adminRegistrationCode,
   }) async {
     final normalizedRole = role.trim().toUpperCase();
@@ -61,12 +63,21 @@ class AuthService {
     if (normalizedRole == 'EMPLOYER') {
       final cleanCompanyName = companyName?.trim();
       final cleanCompanyLocation = companyLocation?.trim();
+      final cleanCompanyDescription = companyDescription?.trim();
+      final cleanCompanyWebsite = companyWebsite?.trim();
 
       if (cleanCompanyName != null && cleanCompanyName.isNotEmpty) {
         payload['companyName'] = cleanCompanyName;
       }
       if (cleanCompanyLocation != null && cleanCompanyLocation.isNotEmpty) {
         payload['companyLocation'] = cleanCompanyLocation;
+      }
+      if (cleanCompanyDescription != null &&
+          cleanCompanyDescription.isNotEmpty) {
+        payload['companyDescription'] = cleanCompanyDescription;
+      }
+      if (cleanCompanyWebsite != null && cleanCompanyWebsite.isNotEmpty) {
+        payload['companyWebsite'] = cleanCompanyWebsite;
       }
     }
 

@@ -34,28 +34,6 @@ class CandidateJobsListScreen extends StatelessWidget {
         backgroundColor: AppColors.canvasLight,
         surfaceTintColor: Colors.transparent,
         foregroundColor: AppColors.primary,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: AppSpacing.lg),
-            child: Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(AppRadii.md),
-                border: Border.all(color: AppColors.borderLight),
-              ),
-              child: IconButton(
-                icon: const Icon(Icons.tune_rounded, size: 18),
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Advanced filters coming soon.')),
-                  );
-                },
-              ),
-            ),
-          ),
-        ],
       ),
       body: Stack(
         children: [
